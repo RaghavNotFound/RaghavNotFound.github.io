@@ -469,16 +469,17 @@ body.horror-active .steve-container {
    ═══════════════════════════════════════════════════════ */
 .steve-gun-3d {
   position: absolute;
-  left: 50%;
-  top: 50%;
+  /* Centered at the hand (inside rightArm-wrapper) */
+  left: calc(2 * var(--mu));
+  top: calc(10.5 * var(--mu));
   width: 0;
   height: 0;
   transform-style: preserve-3d;
   /* Hidden by default */
   opacity: 0;
-  /* At rest: positioned at hand hip level (X=-6mu, Y=-1mu, Z=0.5mu) */
-  transform: translate3d(calc(-6 * var(--mu)), calc(-1 * var(--mu)), calc(0.5 * var(--mu))) rotateX(-10deg) rotateY(10deg);
-  transition: transform 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28), opacity 0.3s ease;
+  /* Centered on the palm, rotated X by -90deg so the barrel points along the arm's Z axis */
+  transform: translate3d(calc(-0.4 * var(--mu)), 0, calc(2.3 * var(--mu))) rotateX(-90deg) rotateY(0deg) rotateZ(0deg);
+  transition: opacity 0.3s ease;
   pointer-events: none;
 }
 
@@ -497,8 +498,8 @@ body.horror-active .steve-container {
 /* HORROR ACTIVE OVERRIDES: Raise arm & aim 3D gun at screen */
 body.horror-active .rightArm-wrapper {
   animation: none; /* Cancel walking swing */
-  /* Aim forward directly toward camera: rotateX(-90deg) raises arm, rotateY(20deg) counters body rotation */
-  transform: rotateX(-90deg) rotateY(20deg) rotateZ(0deg);
+  /* Aim forward directly toward camera: rotateX(-90deg) raises arm, rotateY(18deg) and rotateZ(4deg) look natural */
+  transform: rotateX(-90deg) rotateY(18deg) rotateZ(4deg);
   transition: transform 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
 }
 
@@ -510,8 +511,6 @@ body.horror-active .leftArm-wrapper {
 
 body.horror-active .steve-gun-3d {
   opacity: 1; /* Make visible when hovered */
-  /* Positioned at raised hand (X=-6.2mu, Y=-11.5mu, Z=10mu) and angled slightly */
-  transform: translate3d(calc(-6.2 * var(--mu)), calc(-11.5 * var(--mu)), calc(10 * var(--mu))) rotateX(-5deg) rotateY(15deg) rotateZ(0deg);
 }
 
 /* Responsive adjust to hide Steve on extremely narrow viewports */

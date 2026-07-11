@@ -178,7 +178,7 @@
     return limb;
   }
 
-  // Helper to build a 3D voxel handgun
+  // Helper to build a 3D voxel handgun with pixel noise texture
   function create3DGun() {
     const gunContainer = document.createElement('div');
     gunContainer.className = 'steve-gun-3d';
@@ -191,12 +191,12 @@
       box.style.transformStyle = 'preserve-3d';
       
       const faceSpecs = [
-        { name: 'front',  w: w, h: h, transform: `translate3d(0, 0, calc(${d / 2} * var(--mu)))`, bg: color },
-        { name: 'back',   w: w, h: h, transform: `rotateY(180deg) translate3d(0, 0, calc(${d / 2} * var(--mu)))`, bg: color },
-        { name: 'left',   w: d, h: h, transform: `rotateY(90deg) translate3d(0, 0, calc(${w / 2} * var(--mu)))`, bg: shadowColor },
-        { name: 'right',  w: d, h: h, transform: `rotateY(-90deg) translate3d(0, 0, calc(${w / 2} * var(--mu)))`, bg: highlight },
-        { name: 'top',    w: w, h: d, transform: `rotateX(90deg) translate3d(0, 0, calc(${h / 2} * var(--mu)))`, bg: highlight },
-        { name: 'bottom', w: w, h: d, transform: `rotateX(-90deg) translate3d(0, 0, calc(${h / 2} * var(--mu)))`, bg: shadowColor }
+        { name: 'front',  w: w, h: h, transform: `translate3d(0, 0, calc(${d / 2} * var(--mu)))`, bg: color, noise: 'rgba(255,255,255,0.06)' },
+        { name: 'back',   w: w, h: h, transform: `rotateY(180deg) translate3d(0, 0, calc(${d / 2} * var(--mu)))`, bg: color, noise: 'rgba(0,0,0,0.06)' },
+        { name: 'left',   w: d, h: h, transform: `rotateY(90deg) translate3d(0, 0, calc(${w / 2} * var(--mu)))`, bg: shadowColor, noise: 'rgba(0,0,0,0.08)' },
+        { name: 'right',  w: d, h: h, transform: `rotateY(-90deg) translate3d(0, 0, calc(${w / 2} * var(--mu)))`, bg: highlight, noise: 'rgba(255,255,255,0.08)' },
+        { name: 'top',    w: w, h: d, transform: `rotateX(90deg) translate3d(0, 0, calc(${h / 2} * var(--mu)))`, bg: highlight, noise: 'rgba(255,255,255,0.1)' },
+        { name: 'bottom', w: w, h: d, transform: `rotateX(-90deg) translate3d(0, 0, calc(${h / 2} * var(--mu)))`, bg: shadowColor, noise: 'rgba(0,0,0,0.1)' }
       ];
       
       faceSpecs.forEach(spec => {
@@ -209,29 +209,42 @@
         face.style.position = 'absolute';
         face.style.left = '50%';
         face.style.top = '50%';
-        face.style.boxShadow = `inset calc(0.3 * var(--mu)) calc(0.3 * var(--mu)) 0 rgba(255,255,255,0.08), inset calc(-0.3 * var(--mu)) calc(-0.3 * var(--mu)) 0 rgba(0,0,0,0.15)`;
+        
+        // CSS conic-gradient checkerboard creates pixelated noise aligned with Steve's textures
+        face.style.backgroundImage = `conic-gradient(${spec.noise} 25%, transparent 0 50%, ${spec.noise} 0 75%, transparent 0)`;
+        face.style.backgroundSize = `calc(1 * var(--mu)) calc(1 * var(--mu))`;
+        
+        face.style.boxShadow = `inset calc(0.3 * var(--mu)) calc(0.3 * var(--mu)) 0 rgba(255,255,255,0.05), inset calc(-0.3 * var(--mu)) calc(-0.3 * var(--mu)) 0 rgba(0,0,0,0.12)`;
         box.appendChild(face);
       });
       
       return box;
     }
     
-    // Slide (barrel): 1.4 wide, 1.6 high, 6.5 long
-    const slide = createSolidBox('gun-slide', 1.4, 1.6, 6.5, '#3a3a3a', '#555555', '#222222');
+    // Slide (barrel): 1.0 wide, 1.4 high, 5.5 long (slimmer and more realistic)
+    const slide = createSolidBox('gun-slide', 1.0, 1.4, 5.5, '#303030', '#4a4a4a', '#1e1e1e');
     slide.style.position = 'absolute';
     slide.style.left = '0';
     slide.style.top = '0';
-    slide.style.transform = `translate3d(0, calc(-1.6 * var(--mu)), calc(1.8 * var(--mu)))`; // sits on top of grip, pushed forward
+    slide.style.transform = `translate3d(0, calc(-1.4 * var(--mu)), calc(1.5 * var(--mu)))`; // sits on top of grip, pushed forward
 
-    // Grip: 1.1 wide, 3.2 high, 1.6 long
-    const grip = createSolidBox('gun-grip', 1.1, 3.2, 1.6, '#5c3e27', '#755235', '#3e2b1b');
+    // Grip: 0.8 wide, 2.6 high, 1.4 long
+    const grip = createSolidBox('gun-grip', 0.8, 2.6, 1.4, '#583c25', '#735032', '#3e2918');
     grip.style.position = 'absolute';
     grip.style.left = '0';
     grip.style.top = '0';
     grip.style.transform = `translate3d(0, 0, 0) rotateX(15deg)`; // angled grip
 
+    // Trigger Guard: 0.8 wide, 1.0 high, 1.2 long
+    const guard = createSolidBox('gun-guard', 0.8, 1.0, 1.2, '#181818', '#252525', '#0f0f0f');
+    guard.style.position = 'absolute';
+    guard.style.left = '0';
+    guard.style.top = '0';
+    guard.style.transform = `translate3d(0, calc(-0.4 * var(--mu)), calc(1.0 * var(--mu)))`;
+
     gunContainer.appendChild(slide);
     gunContainer.appendChild(grip);
+    gunContainer.appendChild(guard);
     
     return gunContainer;
   }
@@ -262,9 +275,12 @@
     shadow.className = 'steve-shadow';
     steve.appendChild(shadow);
 
-    // Add 3D voxel gun directly to the character container (reduces 3D nesting depth)
-    const gun3D = create3DGun();
-    steve.appendChild(gun3D);
+    // Add 3D voxel gun back into the right arm wrapper so it sways and articulates perfectly
+    const rightArmWrapper = steve.querySelector('.rightArm-wrapper');
+    if (rightArmWrapper) {
+      const gun3D = create3DGun();
+      rightArmWrapper.appendChild(gun3D);
+    }
 
     // Add Player Nametag (centered above head, direct child of container to avoid scale zoom)
     const nametag = document.createElement('div');
