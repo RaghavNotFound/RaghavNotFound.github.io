@@ -1,0 +1,523 @@
+/* ═══════════════════════════════════════════════════════
+   MINECRAFT JAVA EDITION TITLE SCREEN STYLE SHEET
+   ═══════════════════════════════════════════════════════ */
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* Dynamic Minecraft Unit (mu) calculated from --gui-scale by gui.js */
+  --mu: calc(1px * var(--gui-scale));
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+/* Minecraft font */
+@font-face {
+  font-family: 'Minecraft';
+  src: url('assets/fonts/minecraft/Minecraft.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ═══════════════════════════════════════════════════════
+   CANVAS BACKGROUND
+   ═══════════════════════════════════════════════════════ */
+#skyboxCanvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 1;
+}
+
+/* ═══════════════════════════════════════════════════════
+   OVERLAY & LAYOUT (Java Edition coordinates)
+   ═══════════════════════════════════════════════════════ */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.overlay > * {
+  pointer-events: auto;
+}
+
+/* ═══════════════════════════════════════════════════════
+   TITLE LOGO (Exact 256x44 scale at GUI Scale 1)
+   ═══════════════════════════════════════════════════════ */
+.title-block {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(25vh - 30 * var(--mu));
+  width: calc(256 * var(--mu));
+  height: calc(44 * var(--mu));
+}
+
+.title-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 calc(3 * var(--mu)) 0 rgba(0, 0, 0, 0.4));
+}
+
+/* Java Edition Subtitle (Starts at screen center line, top: 37) */
+.title-edition {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(37 * var(--mu));
+  width: calc(128 * var(--mu));
+  height: calc(14 * var(--mu));
+  object-fit: cover;
+  object-position: top;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 calc(2 * var(--mu)) 0 rgba(0, 0, 0, 0.4));
+}
+
+/* ═══════════════════════════════════════════════════════
+   SPLASH TEXT (Bouncing on the right corner)
+   ═══════════════════════════════════════════════════════ */
+.splash-text {
+  position: absolute;
+  left: calc(100% - 20 * var(--mu));
+  top: calc(34 * var(--mu));
+  font-family: 'Minecraft', sans-serif;
+  font-size: calc(9 * var(--mu));
+  color: #ffff00;
+  text-shadow: calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #3f3f00;
+  transform: rotate(-20deg);
+  transform-origin: center;
+  animation: splashPulse 0.75s ease-in-out infinite alternate;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+@keyframes splashPulse {
+  0% {
+    transform: rotate(-20deg) scale(0.9);
+  }
+  100% {
+    transform: rotate(-20deg) scale(1.05);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   MENU BUTTONS (Centered horizontally, y = height/4 + 48)
+   ═══════════════════════════════════════════════════════ */
+.menu-buttons {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(25vh + 48 * var(--mu));
+  width: calc(200 * var(--mu));
+  display: flex;
+  flex-direction: column;
+  gap: calc(4 * var(--mu));
+}
+
+.menu-row {
+  display: flex;
+  gap: calc(4 * var(--mu));
+  width: 100%;
+}
+
+.mc-btn {
+  position: relative;
+  width: calc(200 * var(--mu));
+  height: calc(20 * var(--mu));
+  border: calc(1 * var(--mu)) solid #000000;
+  background: #7c7c7c;
+  box-shadow:
+    inset calc(1 * var(--mu)) calc(1 * var(--mu)) 0 0 #c6c6c6,
+    inset calc(-1 * var(--mu)) calc(-1 * var(--mu)) 0 0 #5c5c5c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  outline: none;
+}
+
+.mc-btn.half {
+  width: calc(98 * var(--mu));
+}
+
+.mc-btn-inner {
+  font-family: 'Minecraft', sans-serif;
+  font-size: calc(8 * var(--mu));
+  color: #e0e0e0;
+  text-shadow: calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #3f3f3f;
+  margin-top: calc(-1 * var(--mu)); /* Aligns text perfectly vertically */
+}
+
+/* Hover style (blueish texture replication) */
+.mc-btn:hover {
+  background: #8c96c4;
+  box-shadow:
+    inset calc(1 * var(--mu)) calc(1 * var(--mu)) 0 0 #b0b8ec,
+    inset calc(-1 * var(--mu)) calc(-1 * var(--mu)) 0 0 #5c6294;
+}
+
+.mc-btn:hover .mc-btn-inner {
+  color: #ffffa0;
+  text-shadow: calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #3f3f28;
+}
+
+/* Active click state: button appears pressed */
+.mc-btn:active {
+  box-shadow:
+    inset calc(1 * var(--mu)) calc(1 * var(--mu)) 0 0 #5c5c5c,
+    inset calc(-1 * var(--mu)) calc(-1 * var(--mu)) 0 0 #c6c6c6;
+}
+
+.mc-btn:active .mc-btn-inner {
+  margin-top: 0; /* Shifts text down slightly to simulate pressed click */
+}
+
+/* ═══════════════════════════════════════════════════════
+   FOOTERS (Exact Java Edition placements)
+   ═══════════════════════════════════════════════════════ */
+.footer-left, .footer-right {
+  position: absolute;
+  bottom: calc(2 * var(--mu));
+  font-family: 'Minecraft', sans-serif;
+  font-size: calc(8 * var(--mu));
+  color: #ffffff;
+  text-shadow: calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #3f3f3f;
+}
+
+.footer-left {
+  left: calc(2 * var(--mu));
+}
+
+.footer-right {
+  right: calc(2 * var(--mu));
+}
+
+/* ═══════════════════════════════════════════════════════
+   VIGNETTE
+   ═══════════════════════════════════════════════════════ */
+.vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 30%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
+  transition: background 0.4s ease, filter 0.4s ease;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SCARY HORROR THEME RED OVERRIDES
+   ═══════════════════════════════════════════════════════ */
+body.horror-active .vignette {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(139, 0, 0, 0.2) 20%,
+    rgba(50, 0, 0, 0.95) 100%
+  );
+  backdrop-filter: sepia(0.6) saturate(1.8) hue-rotate(-50deg);
+  -webkit-backdrop-filter: sepia(0.6) saturate(1.8) hue-rotate(-50deg);
+}
+
+body.horror-active #skyboxCanvas {
+  filter: contrast(1.4) brightness(0.4) sepia(0.2) hue-rotate(-40deg);
+  transition: filter 0.5s ease;
+}
+
+body.horror-active .title-logo,
+body.horror-active .title-edition {
+  filter: drop-shadow(0 calc(3 * var(--mu)) 0 rgba(0, 0, 0, 0.8)) saturate(0.2) brightness(0.6) sepia(0.8) hue-rotate(-50deg);
+  transition: filter 0.4s ease;
+}
+
+/* Bouncing red splash text modification */
+body.horror-active .splash-text {
+  color: #ff0000;
+  text-shadow: calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #3b0000;
+  content: "RUN.";
+  animation: scaryPulse 0.15s infinite alternate;
+}
+
+@keyframes scaryPulse {
+  0% { transform: rotate(-20deg) scale(1.0); }
+  100% { transform: rotate(-18deg) scale(1.15); }
+}
+
+body.horror-active .footer-left,
+body.horror-active .footer-right {
+  opacity: 0.15;
+  color: #8b0000;
+  text-shadow: none;
+}
+
+/* Jitter camera container */
+body.horror-active .steve-container {
+  animation: scaryCameraShake 0.08s infinite alternate;
+}
+
+@keyframes scaryCameraShake {
+  0% { transform: translate3d(calc(-0.5 * var(--mu)), 0, 0); }
+  100% { transform: translate3d(calc(0.5 * var(--mu)), calc(0.3 * var(--mu)), 0); }
+}
+
+/* ═══════════════════════════════════════════════════════
+   3D STEVE CHARACTER STYLE (PE Style stage)
+   ═══════════════════════════════════════════════════════ */
+.steve-container {
+  position: absolute;
+  left: calc(50% + 185 * var(--mu));
+  top: calc(25vh + 92 * var(--mu));
+  width: 0;
+  height: 0;
+  perspective: 1000px;
+  transform-style: preserve-3d;
+  z-index: 12;
+}
+
+.steve-character {
+  position: absolute;
+  transform-style: preserve-3d;
+  transform: scale3d(3.5, 3.5, 3.5) rotateY(-20deg);
+  animation: steveIdleBob 4s ease-in-out infinite;
+}
+
+.steve-nametag {
+  position: absolute;
+  left: 0;
+  /* Centered flat relative to container (no rotateY counter-rotation needed as it's outside the 3D rotated char) */
+  transform: translateX(-50%) translateZ(calc(7 * var(--mu)));
+  top: calc(-82 * var(--mu));
+  padding: calc(2 * var(--mu)) calc(5 * var(--mu));
+  background: rgba(0, 0, 0, 0.4);
+  color: #ffffff;
+  font-family: 'Minecraft', sans-serif;
+  font-size: calc(7 * var(--mu));
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #202020;
+}
+
+.limb-wrapper {
+  position: absolute;
+  transform-style: preserve-3d;
+}
+
+.steve-limb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+
+.steve-limb .face {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  /* Disable smoothing for pixel-art textures */
+  -ms-interpolation-mode: nearest-neighbor;
+}
+
+/* Outer layers should sit slightly offset and render with alpha transparency */
+.steve-limb.outer-layer {
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════════
+   LIMB COORDINATES & ANCHORS
+   ═══════════════════════════════════════════════════════ */
+.head-wrapper {
+  width: calc(8 * var(--mu));
+  height: calc(8 * var(--mu));
+  left: calc(-4 * var(--mu));
+  top: calc(-20 * var(--mu));
+  transform-origin: bottom center;
+  /* Head sway is now controlled via cursor-tracking in JS */
+}
+
+.torso-wrapper {
+  width: calc(8 * var(--mu));
+  height: calc(12 * var(--mu));
+  left: calc(-4 * var(--mu));
+  top: calc(-12 * var(--mu));
+}
+
+.rightArm-wrapper {
+  width: calc(4 * var(--mu));
+  height: calc(12 * var(--mu));
+  left: calc(-8 * var(--mu));
+  top: calc(-12 * var(--mu));
+  transform-origin: calc(2 * var(--mu)) calc(2 * var(--mu)) 0;
+  animation: steveRightArmSwing 4s ease-in-out infinite alternate;
+}
+
+.leftArm-wrapper {
+  width: calc(4 * var(--mu));
+  height: calc(12 * var(--mu));
+  left: calc(4 * var(--mu));
+  top: calc(-12 * var(--mu));
+  transform-origin: calc(2 * var(--mu)) calc(2 * var(--mu)) 0;
+  animation: steveLeftArmSwing 4s ease-in-out infinite alternate;
+}
+
+.rightLeg-wrapper {
+  width: calc(4 * var(--mu));
+  height: calc(12 * var(--mu));
+  left: calc(-4 * var(--mu));
+  top: calc(0 * var(--mu));
+  transform-origin: calc(2 * var(--mu)) 0 0;
+  animation: steveRightLegSwing 4s ease-in-out infinite alternate;
+}
+
+.leftLeg-wrapper {
+  width: calc(4 * var(--mu));
+  height: calc(12 * var(--mu));
+  left: calc(0 * var(--mu));
+  top: calc(0 * var(--mu));
+  transform-origin: calc(2 * var(--mu)) 0 0;
+  animation: steveLeftLegSwing 4s ease-in-out infinite alternate;
+}
+
+/* ═══════════════════════════════════════════════════════
+   ANIMATION KEYFRAMES
+   ═══════════════════════════════════════════════════════ */
+@keyframes steveIdleBob {
+  0%, 100% {
+    transform: scale3d(3.5, 3.5, 3.5) rotateY(-20deg) translateY(0);
+  }
+  50% {
+    transform: scale3d(3.5, 3.5, 3.5) rotateY(-20deg) translateY(calc(0.4 * var(--mu)));
+  }
+}
+
+@keyframes steveRightArmSwing {
+  0% {
+    transform: rotateX(-8deg) rotateZ(3deg);
+  }
+  100% {
+    transform: rotateX(8deg) rotateZ(1deg);
+  }
+}
+
+@keyframes steveLeftArmSwing {
+  0% {
+    transform: rotateX(8deg) rotateZ(-1deg);
+  }
+  100% {
+    transform: rotateX(-8deg) rotateZ(-3deg);
+  }
+}
+
+@keyframes steveRightLegSwing {
+  0% {
+    transform: rotateX(6deg);
+  }
+  100% {
+    transform: rotateX(-6deg);
+  }
+}
+
+@keyframes steveLeftLegSwing {
+  0% {
+    transform: rotateX(-6deg);
+  }
+  100% {
+    transform: rotateX(6deg);
+  }
+}
+
+.steve-shadow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(14 * var(--mu));
+  height: calc(8 * var(--mu));
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 50%;
+  filter: blur(calc(1 * var(--mu)));
+  transform: translate(-50%, -50%) translateY(calc(12 * var(--mu))) rotateX(90deg);
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════════
+   3D VOXEL PISTOL STYLING & TRANSITIONS
+   ═══════════════════════════════════════════════════════ */
+.steve-gun-3d {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+  /* Force visible for testing */
+  opacity: 1;
+  /* At rest: positioned at hand hip level (X=-6mu, Y=-1mu, Z=0.5mu) */
+  transform: translate3d(calc(-6 * var(--mu)), calc(-1 * var(--mu)), calc(0.5 * var(--mu))) rotateX(-10deg) rotateY(10deg);
+  transition: transform 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28), opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.gun-box {
+  position: absolute;
+  transform-style: preserve-3d;
+}
+
+.gun-box .face {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-style: preserve-3d;
+}
+
+/* HORROR ACTIVE OVERRIDES: Raise arm & aim 3D gun at screen */
+body.horror-active .rightArm-wrapper {
+  animation: none; /* Cancel walking swing */
+  /* Aim forward directly toward camera: rotateX(-90deg) raises arm, rotateY(20deg) counters body rotation */
+  transform: rotateX(-90deg) rotateY(20deg) rotateZ(0deg);
+  transition: transform 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+body.horror-active .leftArm-wrapper {
+  animation: none;
+  transform: rotateX(15deg) rotateZ(-10deg);
+  transition: transform 0.4s ease;
+}
+
+body.horror-active .steve-gun-3d {
+  opacity: 1; /* Make visible when hovered */
+  /* Positioned at raised hand (X=-6.2mu, Y=-11.5mu, Z=10mu) and angled slightly */
+  transform: translate3d(calc(-6.2 * var(--mu)), calc(-11.5 * var(--mu)), calc(10 * var(--mu))) rotateX(-5deg) rotateY(15deg) rotateZ(0deg);
+}
+
+/* Responsive adjust to hide Steve on extremely narrow viewports */
+@media (max-width: 768px) {
+  .steve-container {
+    display: none;
+  }
+}
+

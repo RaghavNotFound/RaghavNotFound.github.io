@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Minecraft-style 3D skybox panorama title screen.">
+  <title>Minecraft Skybox — 360° Panorama</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Load the GUI scaling controller first -->
+  <script src="gui.js"></script>
+</head>
+<body>
+
+  <!-- WebGL canvas — renders the skybox at 60fps on the GPU -->
+  <canvas id="skyboxCanvas"></canvas>
+
+  <!-- TITLE OVERLAY -->
+  <div class="overlay">
+    <div class="title-block">
+      <img src="assets/minecraft.png" alt="Minecraft" class="title-logo" draggable="false">
+      <img src="assets/edition.png" alt="Java Edition" class="title-edition" draggable="false">
+      <div class="splash-text">Also try Terraria!</div>
+    </div>
+
+    <div class="menu-buttons">
+      <button class="mc-btn"><span class="mc-btn-inner">Singleplayer</span></button>
+      <button class="mc-btn"><span class="mc-btn-inner">Multiplayer</span></button>
+      <button class="mc-btn"><span class="mc-btn-inner">Minecraft Realms</span></button>
+      <div class="menu-row">
+        <button class="mc-btn half"><span class="mc-btn-inner">Options...</span></button>
+        <button class="mc-btn half" id="btnQuit"><span class="mc-btn-inner">Quit Game</span></button>
+      </div>
+    </div>
+
+    <!-- FOOTER INFO (Exact MCJE placement) -->
+    <div class="footer-left">Minecraft 1.21.8</div>
+    <div class="footer-right">Copyright Mojang AB. Do not distribute!</div>
+  </div>
+
+  <!-- VIGNETTE -->
+  <div class="vignette"></div>
+
+  <script src="skybox.js"></script>
+  <script src="steve.js"></script>
+</body>
+</html>
