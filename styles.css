@@ -474,8 +474,8 @@ body.horror-active .steve-container {
   width: 0;
   height: 0;
   transform-style: preserve-3d;
-  /* Force visible for testing */
-  opacity: 1;
+  /* Hidden by default */
+  opacity: 0;
   /* At rest: positioned at hand hip level (X=-6mu, Y=-1mu, Z=0.5mu) */
   transform: translate3d(calc(-6 * var(--mu)), calc(-1 * var(--mu)), calc(0.5 * var(--mu))) rotateX(-10deg) rotateY(10deg);
   transition: transform 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28), opacity 0.3s ease;
