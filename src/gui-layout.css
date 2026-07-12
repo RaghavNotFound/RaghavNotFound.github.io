@@ -1,0 +1,154 @@
+/* ═══════════════════════════════════════════════════════
+   MINECRAFT MAIN MENU GUI LAYOUT VARIABLES
+   
+   Feel free to edit the values here to manually adjust 
+   the positions (X and Y axis), gaps, and font sizes 
+   for perfect scaling. All variables scale with var(--mu).
+   ═══════════════════════════════════════════════════════ */
+
+:root {
+  /* ═══════════════════════════════════════════════════════
+     MINECRAFT TITLE LOGO POSITIONING
+     ═══════════════════════════════════════════════════════ */
+  /* Width of the main "MINECRAFT" title logo container */
+  --title-logo-width: calc(192 * var(--mu));
+  /* Vertical margin from top of screen */
+  --title-logo-margin-top: calc(23vh - 39.5 * var(--mu));
+  /* Vertical margin below logo before buttons */
+  --title-logo-margin-bottom: calc(24 * var(--mu));
+
+  /* ═══════════════════════════════════════════════════════
+     "JAVA EDITION" POSITIONING & RATIO
+     ═══════════════════════════════════════════════════════ */
+  /* Width of the "JAVA EDITION" subtitle */
+  --edition-width: calc(96 * var(--mu));
+  /* Vertical overlap offset (68% overlap is official Java ratio) */
+  --edition-top: 57.5%;
+  /* Horizontal centering position */
+  --edition-left: 50%;
+
+  /* ═══════════════════════════════════════════════════════
+     YELLOW SPLASH TEXT
+     ═══════════════════════════════════════════════════════ */
+  /* Horizontal right offset from the logo edge */
+  --splash-right: calc(-30 * var(--mu));
+  /* Vertical bottom offset from the logo edge */
+  --splash-bottom: calc(+15 * var(--mu));
+  /* Base font size of the splash text */
+  --splash-font-size: calc(8 * var(--mu));
+  /* Rotation angle */
+  --splash-rotation: -20deg;
+  /* Pulsing size ratio minimum scale */
+  --splash-scale-min: 1;
+  /* Pulsing size ratio maximum scale */
+  --splash-scale-max: 1.06;
+
+  /* ═══════════════════════════════════════════════════════
+     MAIN MENU BUTTONS CONTAINER & SIZE
+     ═══════════════════════════════════════════════════════ */
+  /* Total width of the buttons menu stack */
+  --menu-buttons-width: calc(150 * var(--mu));
+  /* Gap between vertical menu buttons */
+  --menu-buttons-gap: calc(3.2 * var(--mu));
+  /* Horizontal offset (positive = right, negative = left) */
+  --menu-buttons-offset-x: calc(0 * var(--mu));
+  /* Vertical offset (positive = down, negative = up) */
+  --menu-buttons-offset-y: calc(8.8 * var(--mu));
+
+  /* ═══════════════════════════════════════════════════════
+     INDIVIDUAL BUTTONS HEIGHT & FONT SIZE
+     ═══════════════════════════════════════════════════════ */
+  /* Height of standard buttons (Singleplayer, Multiplayer, Options...) */
+  --btn-height: calc(15 * var(--mu));
+  /* Font size of button labels */
+  --btn-font-size: calc(7.5 * var(--mu));
+  /* Black border thickness of the buttons */
+  --btn-border-width: calc(0.8 * var(--mu));
+  /* Black border color of the buttons */
+  --btn-border-color: #000000;
+  /* Hover border color of the buttons */
+  --btn-border-hover-color: #ffffff;
+  
+  /* Inner bevel border (light color side: left & top) width and color */
+  --btn-inner-border-left-top-width: calc(0.8 * var(--mu));
+  --btn-inner-border-light: #AAAAAA;
+  
+  /* Inner bevel border (dark color side: right) width */
+  --btn-inner-border-right-width: calc(0.8 * var(--mu));
+  /* Inner bevel border (dark color side: bottom) width */
+  --btn-inner-border-bottom-width: calc(1.5 * var(--mu));
+  --btn-inner-border-dark: #575757;
+
+  /* Text shadow displacement distance for button text */
+  --btn-text-shadow-dist: calc(0.8 * var(--mu));
+
+  /* Accessibility icon drop shadow offset */
+  --accessibility-shadow-dist: calc(0.2 * var(--mu));
+
+  /* ═══════════════════════════════════════════════════════
+     BOTTOM ROW LAYOUT
+     Options + gap + Quit = Singleplayer width.
+     Lang and Accessibility icons bulge outside that width.
+     ═══════════════════════════════════════════════════════ */
+  /* Gap between Options and Quit (same as menu gap) */
+  --bottom-row-gap: var(--menu-buttons-gap);
+  /* Gap between Lang icon and Options button */
+  --lang-btn-gap: calc(3.3 * var(--mu));
+  /* Gap between Quit button and Accessibility icon */
+  --accessibility-btn-gap: calc(3.5 * var(--mu));
+
+  /* ═══════════════════════════════════════════════════════
+     BOTTOM ROW BUTTONS POSITIONING (Lang, Options, Quit, Accessibility)
+     Shared X, Y, and height for all buttons in the row
+     ═══════════════════════════════════════════════════════ */
+  /* Horizontal offset for the entire bottom row (positive = right) */
+  --bottom-row-offset-x: calc(0 * var(--mu));
+  /* Vertical offset for the entire bottom row (positive = down) */
+  --bottom-row-offset-y: calc(8.8 * var(--mu));
+  /* Height of all buttons in the bottom row */
+  --bottom-row-btn-height: var(--btn-height);
+
+  /* ═══════════════════════════════════════════════════════
+     BOTTOM ROW INDIVIDUAL WIDTHS
+     Options + Quit each take half of Singleplayer width
+     ═══════════════════════════════════════════════════════ */
+  /* Width of the "Options..." button */
+  --btn-options-width: calc((var(--menu-buttons-width) - var(--bottom-row-gap)) / 2);
+  /* Width of the "Quit Game" button */
+  --btn-quit-width: calc((var(--menu-buttons-width) - var(--bottom-row-gap)) / 2);
+
+  /* ═══════════════════════════════════════════════════════
+     LANG & ACCESSIBILITY ICON BUTTON RATIOS
+     ═══════════════════════════════════════════════════════ */
+  /* Sizing of square icon buttons (width = height for square) */
+  --icon-btn-width: var(--btn-height);
+  --icon-btn-height: var(--btn-height);
+  /* Sizing of language globe png */
+  --lang-icon-size: calc(9.75 * var(--mu));
+  /* Sizing of accessibility png */
+  --accessibility-icon-size: calc(11 * var(--mu));
+
+  /* ═══════════════════════════════════════════════════════
+     FOOTER VERSION & COPYRIGHT TEXTS
+     ═══════════════════════════════════════════════════════ */
+  /* Font size of footer version and copyright labels */
+  --footer-font-size: calc(6.8 * var(--mu));
+  /* Padding from bottom of screen */
+  --footer-padding-bottom: calc(0.4 * var(--mu));
+  /* Padding from left screen edge */
+  --footer-padding-left: calc(2 * var(--mu));
+  /* Padding from right screen edge */
+  --footer-padding-right: calc(2 * var(--mu));
+
+  /* ═══════════════════════════════════════════════════════
+     3D STEVE VIEWPORT POSITIONING
+     ═══════════════════════════════════════════════════════ */
+  /* Horizontal positioning offset from screen center */
+  --steve-container-left: calc(50% + 90 * var(--mu));
+  /* Vertical positioning offset from screen top */
+  --steve-container-top: calc(25vh + -35 * var(--mu));
+  /* Width of Steve's 3D canvas viewport */
+  --steve-container-width: calc(150 * var(--mu));
+  /* Height of Steve's 3D canvas viewport */
+  --steve-container-height: calc(200 * var(--mu));
+}
