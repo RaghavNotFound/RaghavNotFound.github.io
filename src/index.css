@@ -107,7 +107,7 @@ body.horror-active .title-logo {
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 10;
+  z-index: 15;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -234,8 +234,9 @@ body.horror-active .title-logo {
   transition: all 0.05s ease;
 }
 
-.mc-btn:hover {
-  border-color: var(--btn-border-hover-color);
+.mc-btn:hover,
+.mc-btn.selected-btn {
+  border-color: var(--btn-border-hover-color) !important;
 }
 
 .mc-btn:active .mc-btn-inner {
@@ -347,22 +348,24 @@ body.horror-active .title-logo {
   height: 100%;
   display: block;
   image-rendering: pixelated;
+  pointer-events: auto;
 }
+
 
 .steve-nametag {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  top: calc(-12 * var(--mu));
-  padding: calc(2 * var(--mu)) calc(5 * var(--mu));
-  background: rgba(0, 0, 0, 0.45);
+  top: var(--steve-nametag-top);
+  padding: 0;
+  background: none;
+  border: none;
   color: #ffffff;
   font-family: 'Minecraft', sans-serif;
   font-size: calc(7 * var(--mu));
   white-space: nowrap;
   pointer-events: none;
-  text-shadow: calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #202020;
-  border: calc(1 * var(--mu)) solid rgba(0, 0, 0, 0.2);
+  text-shadow: var(--steve-nametag-shadow-dist) var(--steve-nametag-shadow-dist) 0 var(--steve-nametag-shadow-color);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -522,4 +525,43 @@ body.horror-active .title-logo {
   .steve-container {
     display: none;
   }
+}
+
+/* ═══════════════════════════════════════════════════════
+   KEYBOARD NAVIGATION & VISUALIZER STYLES
+   ═══════════════════════════════════════════════════════ */
+.kb-visualizer {
+  position: absolute;
+  bottom: calc(15 * var(--mu));
+  left: calc(12 * var(--mu));
+  display: flex;
+  gap: calc(6 * var(--mu));
+  z-index: 100;
+  pointer-events: none;
+}
+
+.kb-box {
+  border: var(--btn-border-width) solid var(--btn-border-color);
+  padding: calc(3 * var(--mu)) calc(6 * var(--mu));
+  background: rgba(0, 0, 0, 0.45);
+  color: #ffffff;
+  font-family: 'Minecraft', sans-serif;
+  font-size: calc(6.5 * var(--mu));
+  text-shadow: calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #202020;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: calc(2 * var(--mu));
+  transition: all 0.08s ease;
+  box-shadow: inset calc(-1 * var(--btn-inner-border-right-width)) calc(-1 * var(--btn-inner-border-bottom-width)) var(--btn-inner-border-dark), 
+              inset var(--btn-inner-border-left-top-width) var(--btn-inner-border-left-top-width) var(--btn-inner-border-light);
+}
+
+.kb-box.active {
+  border-color: #ffffff;
+  color: #ffffa0;
+  box-shadow: inset 0 0 0 calc(2 * var(--mu)) #ffffff,
+              inset calc(-1 * var(--btn-inner-border-right-width)) calc(-1 * var(--btn-inner-border-bottom-width)) var(--btn-inner-border-dark), 
+              inset var(--btn-inner-border-left-top-width) var(--btn-inner-border-left-top-width) var(--btn-inner-border-light);
+  transform: translateY(calc(0.5 * var(--mu)));
 }

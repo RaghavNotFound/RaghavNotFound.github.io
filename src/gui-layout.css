@@ -144,11 +144,19 @@
      3D STEVE VIEWPORT POSITIONING
      ═══════════════════════════════════════════════════════ */
   /* Horizontal positioning offset from screen center */
-  --steve-container-left: calc(50% + 90 * var(--mu));
+  --steve-container-left: calc(50% + 40 * var(--mu));
   /* Vertical positioning offset from screen top */
-  --steve-container-top: calc(25vh + -35 * var(--mu));
+  --steve-container-top: calc(25vh + -75 * var(--mu));
   /* Width of Steve's 3D canvas viewport */
-  --steve-container-width: calc(150 * var(--mu));
+  --steve-container-width: calc(250 * var(--mu));
   /* Height of Steve's 3D canvas viewport */
-  --steve-container-height: calc(200 * var(--mu));
+  --steve-container-height: calc(280 * var(--mu));
+  /* Vertical position of the name tag above Steve's head */
+  --steve-nametag-top: calc(50 * var(--mu));
+  /* Size scale multiplier for the 3D Steve character (e.g. 1 for default, 0.8 for smaller) */
+  --steve-scale: 0.7;
+  /* Drop shadow displacement offset for the Steve name tag */
+  --steve-nametag-shadow-dist: calc(0.8 * var(--mu));
+  /* Drop shadow color for the Steve name tag */
+  --steve-nametag-shadow-color: #202020;
 }
