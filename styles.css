@@ -477,8 +477,8 @@ body.horror-active .steve-container {
   transform-style: preserve-3d;
   /* Hidden by default */
   opacity: 0;
-  /* Centered on the palm, rotated X by 90deg so the barrel points forward with the forward-raised arm */
-  transform: translate3d(calc(-0.4 * var(--mu)), 0, calc(2.3 * var(--mu))) rotateX(90deg) rotateY(0deg) rotateZ(0deg);
+  /* Centered on the palm, rotated X by -90deg so the barrel points forward with the forward-raised arm */
+  transform: translate3d(calc(-0.5 * var(--mu)), 0, calc(2.4 * var(--mu))) rotateX(-90deg) rotateY(0deg) rotateZ(0deg);
   transition: opacity 0.3s ease;
   pointer-events: none;
 }
@@ -498,8 +498,8 @@ body.horror-active .steve-container {
 /* HORROR ACTIVE OVERRIDES: Raise arm & aim 3D gun at screen */
 body.horror-active .rightArm-wrapper {
   animation: none; /* Cancel walking swing */
-  /* Aim forward directly toward camera: rotateX(90deg) raises arm forward, rotateY(18deg) and rotateZ(4deg) look natural */
-  transform: rotateX(90deg) rotateY(18deg) rotateZ(4deg);
+  /* Aim forward directly toward camera: rotateY(20deg) counters body rotation, rotateX(90deg) raises arm forward */
+  transform: rotateY(20deg) rotateX(90deg) rotateZ(4deg);
   transition: transform 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
 }
 

@@ -178,6 +178,47 @@
     return limb;
   }
 
+  // Helper to generate a pixelated noise texture dynamically using HTML5 Canvas
+  function createVoxelTexture(w, h, baseColorHex, addHole = false) {
+    const hex = baseColorHex.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    
+    // Scale texture size (4 pixels per unit matches standard Minecraft resolution)
+    const pxW = Math.max(1, Math.round(w * 4));
+    const pxH = Math.max(1, Math.round(h * 4));
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = pxW;
+    canvas.height = pxH;
+    const ctx = canvas.getContext('2d');
+    
+    for (let y = 0; y < pxH; y++) {
+      for (let x = 0; x < pxW; x++) {
+        // Add pixel-art noise offset (+/- 12)
+        const noise = Math.floor(Math.random() * 25) - 12;
+        const nr = Math.max(0, Math.min(255, r + noise));
+        const ng = Math.max(0, Math.min(255, g + noise));
+        const nb = Math.max(0, Math.min(255, b + noise));
+        
+        ctx.fillStyle = `rgb(${nr}, ${ng}, ${nb})`;
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+
+    // Add a black pixel barrel hole in the center of the muzzle
+    if (addHole) {
+      const cx = Math.floor(pxW / 2);
+      const cy = Math.floor(pxH / 2);
+      ctx.fillStyle = '#000000';
+      // Draw a 2x2 pixel black bore hole
+      ctx.fillRect(cx - 1, cy - 1, 2, 2);
+    }
+    
+    return canvas.toDataURL();
+  }
+
   // Helper to build a 3D voxel handgun with pixel noise texture
   function create3DGun() {
     const gunContainer = document.createElement('div');
@@ -191,12 +232,12 @@
       box.style.transformStyle = 'preserve-3d';
       
       const faceSpecs = [
-        { name: 'front',  w: w, h: h, transform: `translate3d(0, 0, calc(${d / 2} * var(--mu)))`, bg: color, noise: 'rgba(255,255,255,0.06)' },
-        { name: 'back',   w: w, h: h, transform: `rotateY(180deg) translate3d(0, 0, calc(${d / 2} * var(--mu)))`, bg: color, noise: 'rgba(0,0,0,0.06)' },
-        { name: 'left',   w: d, h: h, transform: `rotateY(90deg) translate3d(0, 0, calc(${w / 2} * var(--mu)))`, bg: shadowColor, noise: 'rgba(0,0,0,0.08)' },
-        { name: 'right',  w: d, h: h, transform: `rotateY(-90deg) translate3d(0, 0, calc(${w / 2} * var(--mu)))`, bg: highlight, noise: 'rgba(255,255,255,0.08)' },
-        { name: 'top',    w: w, h: d, transform: `rotateX(90deg) translate3d(0, 0, calc(${h / 2} * var(--mu)))`, bg: highlight, noise: 'rgba(255,255,255,0.1)' },
-        { name: 'bottom', w: w, h: d, transform: `rotateX(-90deg) translate3d(0, 0, calc(${h / 2} * var(--mu)))`, bg: shadowColor, noise: 'rgba(0,0,0,0.1)' }
+        { name: 'front',  w: w, h: h, transform: `translate3d(0, 0, calc(${d / 2} * var(--mu)))`, bg: color },
+        { name: 'back',   w: w, h: h, transform: `rotateY(180deg) translate3d(0, 0, calc(${d / 2} * var(--mu)))`, bg: color },
+        { name: 'left',   w: d, h: h, transform: `rotateY(90deg) translate3d(0, 0, calc(${w / 2} * var(--mu)))`, bg: shadowColor },
+        { name: 'right',  w: d, h: h, transform: `rotateY(-90deg) translate3d(0, 0, calc(${w / 2} * var(--mu)))`, bg: highlight },
+        { name: 'top',    w: w, h: d, transform: `rotateX(90deg) translate3d(0, 0, calc(${h / 2} * var(--mu)))`, bg: highlight },
+        { name: 'bottom', w: w, h: d, transform: `rotateX(-90deg) translate3d(0, 0, calc(${h / 2} * var(--mu)))`, bg: shadowColor }
       ];
       
       faceSpecs.forEach(spec => {
@@ -205,14 +246,36 @@
         face.style.width = `calc(${spec.w} * var(--mu))`;
         face.style.height = `calc(${spec.h} * var(--mu))`;
         face.style.transform = `translate(-50%, -50%) ${spec.transform}`;
-        face.style.backgroundColor = spec.bg;
         face.style.position = 'absolute';
         face.style.left = '50%';
         face.style.top = '50%';
         
-        // CSS conic-gradient checkerboard creates pixelated noise aligned with Steve's textures
-        face.style.backgroundImage = `conic-gradient(${spec.noise} 25%, transparent 0 50%, ${spec.noise} 0 75%, transparent 0)`;
-        face.style.backgroundSize = `calc(1 * var(--mu)) calc(1 * var(--mu))`;
+        let isTextureMapped = false;
+        
+        // Map the new high-quality pixel-art gun texture onto the side profiles
+        if (name === 'gun-slide' && (spec.name === 'left' || spec.name === 'right')) {
+          face.style.backgroundImage = "url('assets/gun.png')";
+          face.style.backgroundSize = '100% 180%';
+          face.style.backgroundPosition = '0 0';
+          face.style.imageRendering = 'pixelated';
+          isTextureMapped = true;
+        } else if (name === 'gun-grip' && (spec.name === 'left' || spec.name === 'right')) {
+          face.style.backgroundImage = "url('assets/gun.png')";
+          face.style.backgroundSize = '200% 220%';
+          face.style.backgroundPosition = '100% 100%';
+          face.style.imageRendering = 'pixelated';
+          isTextureMapped = true;
+        }
+        
+        if (!isTextureMapped) {
+          // Apply canvas pixel noise texture for tops, bottoms, and end caps
+          // Add a black bore hole if it is the front face of the slide
+          const addHole = (name === 'gun-slide' && spec.name === 'front');
+          const textureUrl = createVoxelTexture(spec.w, spec.h, spec.bg, addHole);
+          face.style.backgroundImage = `url(${textureUrl})`;
+          face.style.backgroundSize = '100% 100%';
+          face.style.imageRendering = 'pixelated';
+        }
         
         face.style.boxShadow = `inset calc(0.3 * var(--mu)) calc(0.3 * var(--mu)) 0 rgba(255,255,255,0.05), inset calc(-0.3 * var(--mu)) calc(-0.3 * var(--mu)) 0 rgba(0,0,0,0.12)`;
         box.appendChild(face);
@@ -221,26 +284,26 @@
       return box;
     }
     
-    // Slide (barrel): 1.0 wide, 1.4 high, 5.5 long (slimmer and more realistic)
-    const slide = createSolidBox('gun-slide', 1.0, 1.4, 5.5, '#303030', '#4a4a4a', '#1e1e1e');
+    // Slide (barrel): 1.3 wide, 1.8 high, 7.0 long (scaled up by 30%)
+    const slide = createSolidBox('gun-slide', 1.3, 1.8, 7.0, '#303030', '#4a4a4a', '#1e1e1e');
     slide.style.position = 'absolute';
     slide.style.left = '0';
     slide.style.top = '0';
-    slide.style.transform = `translate3d(0, calc(-1.4 * var(--mu)), calc(1.5 * var(--mu)))`; // sits on top of grip, pushed forward
+    slide.style.transform = `translate3d(0, calc(-1.8 * var(--mu)), calc(2.0 * var(--mu)))`; // sits on top of grip, pushed forward
 
-    // Grip: 0.8 wide, 2.6 high, 1.4 long
-    const grip = createSolidBox('gun-grip', 0.8, 2.6, 1.4, '#583c25', '#735032', '#3e2918');
+    // Grip: 1.0 wide, 3.4 high, 1.8 long (scaled up by 30%)
+    const grip = createSolidBox('gun-grip', 1.0, 3.4, 1.8, '#583c25', '#735032', '#3e2918');
     grip.style.position = 'absolute';
     grip.style.left = '0';
     grip.style.top = '0';
     grip.style.transform = `translate3d(0, 0, 0) rotateX(15deg)`; // angled grip
 
-    // Trigger Guard: 0.8 wide, 1.0 high, 1.2 long
-    const guard = createSolidBox('gun-guard', 0.8, 1.0, 1.2, '#181818', '#252525', '#0f0f0f');
+    // Trigger Guard: 1.0 wide, 1.3 high, 1.6 long (scaled up by 30%)
+    const guard = createSolidBox('gun-guard', 1.0, 1.3, 1.6, '#181818', '#252525', '#0f0f0f');
     guard.style.position = 'absolute';
     guard.style.left = '0';
     guard.style.top = '0';
-    guard.style.transform = `translate3d(0, calc(-0.4 * var(--mu)), calc(1.0 * var(--mu)))`;
+    guard.style.transform = `translate3d(0, calc(-0.5 * var(--mu)), calc(1.3 * var(--mu)))`;
 
     gunContainer.appendChild(slide);
     gunContainer.appendChild(grip);
