@@ -1,5 +1,52 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
+import GlobalControls from './GlobalControls';
+import ContactScreen from './ContactScreen';
+import MainMenu from './MainMenu';
+import projectsData from './projects.json';
+import skillsData from './skills.json';
+import { 
+  PLAYLIST, 
+  KEEP_MUSIC_NOTIFICATION_ALWAYS_ACTIVE,
+  MUSIC_TOAST_WIDTH,
+  MUSIC_TOAST_HEIGHT,
+  MUSIC_TOAST_BORDER_WIDTH,
+  MUSIC_TOAST_BORDER_RADIUS,
+  MUSIC_TOAST_X,
+  MUSIC_TOAST_Y,
+  MUSIC_TOAST_ICON_SIZE,
+  MUSIC_TOAST_ICON_MARGIN,
+  MUSIC_TOAST_BOUNCE_SPEED,
+  MUSIC_TOAST_BOUNCE_DELAY
+} from './config';
+
+function getBrowserInfo() {
+  const ua = navigator.userAgent;
+  let tem;
+  let M = ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\/))\/?\s*(\d+)/i) || [];
+  if (/trident/i.test(M[1])) {
+    tem = /\brv[ :]+(\d+)/g.exec(ua) || [];
+    return 'IE ' + (tem[1] || '');
+  }
+  if (M[1] === 'Chrome') {
+    tem = ua.match(/\b(OPR|Edge)\/(\d+)/);
+    if (tem != null) return tem.slice(1).join(' ').replace('OPR', 'Opera');
+  }
+  M = M[2] ? [M[1], M[2]] : [navigator.appName, navigator.appVersion, '-?'];
+  if ((tem = ua.match(/version\/(\d+)/i)) != null) M.splice(1, 1, tem[1]);
+  return M.join(' ');
+}
+
+function getOSInfo() {
+  const ua = navigator.userAgent;
+  if (ua.indexOf("Win") !== -1) return "Windows";
+  if (ua.indexOf("Mac") !== -1) return "macOS";
+  if (ua.indexOf("X11") !== -1) return "UNIX";
+  if (ua.indexOf("Linux") !== -1) return "Linux";
+  if (/Android/i.test(ua)) return "Android";
+  if (/iPhone|iPad|iPod/i.test(ua)) return "iOS";
+  return "Unknown OS";
+}
 
 export default function App() {
   const [activeSection, setActiveSection] = useState('menu'); // menu, profile, projects, contact
@@ -8,6 +55,368 @@ export default function App() {
   const [selectedBtnId, setSelectedBtnId] = useState(null);
   const [arrowActive, setArrowActive] = useState(false);
   const [keyActive, setKeyActive] = useState(false);
+  const [isStalkerMode, setIsStalkerMode] = useState(false);
+  const stalkerCanvasRef = useRef(null);
+  const [musicVolume, setMusicVolume] = useState(50);
+  const [buttonVolume, setButtonVolume] = useState(100);
+  const [textScale, setTextScale] = useState(1.0);
+  const [skyboxSpeed, setSkyboxSpeed] = useState(50); // Default to 50% speed
+  const [currentSongName, setCurrentSongName] = useState('');
+  const [showSongNotification, setShowSongNotification] = useState(false);
+
+  // Global states for Mode, Reduced Motion, and F3 Overlay (persisted in localStorage)
+  const [portfolioMode, setPortfolioMode] = useState(() => {
+    return localStorage.getItem('steve-portfolio-mode') || 'recruiter';
+  });
+  const [reducedMotion, setReducedMotion] = useState(() => {
+    const saved = localStorage.getItem('steve-reduced-motion');
+    if (saved !== null) return saved === 'true';
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  });
+
+  // Sync skybox speed to CSS variable for the WebGL render loop
+  useEffect(() => {
+    document.documentElement.style.setProperty('--skybox-speed', skyboxSpeed);
+  }, [skyboxSpeed]);
+
+  const [f3Open, setF3Open] = useState(false);
+  const [expandedWorld, setExpandedWorld] = useState(null);
+  const [playingWorld, setPlayingWorld] = useState(null);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [projectFilter, setProjectFilter] = useState('All');
+
+  const [systemSpecs, setSystemSpecs] = useState({
+    browser: 'Loading...',
+    os: 'Loading...',
+    platform: 'N/A',
+    cores: 'N/A',
+    memory: 'N/A',
+    screenRes: 'N/A',
+    viewportRes: 'N/A',
+    aspectRatio: 'N/A',
+    colorDepth: 'N/A',
+    orientation: 'N/A',
+    dpr: 'N/A',
+    connection: 'N/A',
+    gpuVendor: 'Loading...',
+    gpuRenderer: 'Loading...',
+    glVersion: 'Loading...',
+    glslVersion: 'Loading...',
+    maxTextureSize: 'N/A',
+    language: 'N/A',
+    allLanguages: 'N/A',
+    cookies: 'N/A',
+    online: 'N/A',
+    timezone: 'N/A',
+    localTime: 'N/A',
+    ip: 'Fetching...',
+    location: 'Fetching...',
+    isp: 'Fetching...',
+    coords: 'Fetching...',
+    postal: 'Fetching...',
+    currency: 'Fetching...',
+    battery: 'N/A',
+    storage: 'Querying...',
+    touch: 'N/A',
+    rtt: 'N/A',
+    colorScheme: 'N/A',
+    dnt: 'N/A',
+    supportedApis: 'N/A',
+    // Visit tracking
+    visitCount: '1',
+    firstVisit: 'Now',
+    lastVisit: 'Now',
+    sessionTime: '0s',
+    // Performance
+    pageLoadTime: 'Measuring...',
+    domNodes: 'N/A',
+    jsHeapSize: 'N/A',
+    referrer: 'N/A',
+    // Capabilities
+    serviceWorker: 'N/A',
+    webAssembly: 'N/A',
+    notifications: 'N/A',
+    pdfViewer: 'N/A',
+    webrtc: 'N/A',
+    gamepad: 'N/A'
+  });
+
+  // Session start timestamp ref (doesn't re-render)
+  const sessionStartRef = useRef(Date.now());
+
+  useEffect(() => {
+    // ── 0. Visit Tracking (localStorage) ──
+    const VISIT_KEY = 'raghav-portfolio-visits';
+    const FIRST_VISIT_KEY = 'raghav-portfolio-first-visit';
+    const LAST_VISIT_KEY = 'raghav-portfolio-last-visit';
+    const TOTAL_TIME_KEY = 'raghav-portfolio-total-time';
+
+    let visitCount = 1;
+    let firstVisitStr = new Date().toLocaleDateString();
+    try {
+      const stored = localStorage.getItem(VISIT_KEY);
+      if (stored) {
+        visitCount = parseInt(stored, 10) + 1;
+      }
+      localStorage.setItem(VISIT_KEY, visitCount.toString());
+
+      const storedFirst = localStorage.getItem(FIRST_VISIT_KEY);
+      if (storedFirst) {
+        firstVisitStr = storedFirst;
+      } else {
+        localStorage.setItem(FIRST_VISIT_KEY, firstVisitStr);
+      }
+
+      localStorage.setItem(LAST_VISIT_KEY, new Date().toLocaleString());
+    } catch (e) { /* Private browsing */ }
+
+    const lastVisitStr = localStorage.getItem(LAST_VISIT_KEY) || 'Now';
+
+    // ── 1. Calculate Screen Aspect Ratio ──
+    const gcd = (a, b) => b ? gcd(b, a % b) : a;
+    const screenW = window.screen.width || 1;
+    const screenH = window.screen.height || 1;
+    const divisor = gcd(screenW, screenH);
+    const aspect = `${screenW / divisor}:${screenH / divisor}`;
+
+    // ── 2. Query Storage APIs Support ──
+    const storageApisList = [
+      window.localStorage ? 'LocalStorage' : '',
+      window.sessionStorage ? 'SessionStorage' : '',
+      window.indexedDB ? 'IndexedDB' : ''
+    ].filter(Boolean).join(', ');
+
+    // ── 3. Network and Touch ──
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    const connInfo = conn ? `${conn.effectiveType || 'unknown'} (${conn.downlink || '?'} Mbps)` : 'N/A';
+    const rttVal = conn ? `${conn.rtt || '?'} ms` : 'N/A';
+    const touchVal = navigator.maxTouchPoints > 0 ? `Yes (${navigator.maxTouchPoints} points)` : 'No';
+    const schemeVal = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'Dark' : 'Light';
+    const dntVal = navigator.doNotTrack === '1' || navigator.doNotTrack === 'yes' ? 'Enabled' : 'Disabled / Unspecified';
+
+    // ── 4. Extract WebGL and GPU parameters ──
+    let gpuV = window._gpuVendor || 'Gathering...';
+    let gpuR = window._gpuRenderer || 'Gathering...';
+    let glVer = 'N/A';
+    let glslVer = 'N/A';
+    let maxTexSize = 'N/A';
+
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (gl) {
+        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+        if (debugInfo) {
+          gpuV = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+          gpuR = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+        }
+        glVer = gl.getParameter(gl.VERSION) || 'WebGL 1.0';
+        glslVer = gl.getParameter(gl.SHADING_LANGUAGE_VERSION) || 'N/A';
+        maxTexSize = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 'N/A';
+      }
+    } catch (e) {
+      gpuV = 'Blocked/Unsupported';
+      gpuR = 'Blocked/Unsupported';
+    }
+
+    // ── 5. Performance metrics ──
+    let pageLoad = 'Measuring...';
+    try {
+      const perf = performance.getEntriesByType('navigation')[0];
+      if (perf) {
+        pageLoad = `${Math.round(perf.loadEventEnd - perf.startTime)} ms`;
+      }
+    } catch (e) {}
+
+    const domNodes = document.querySelectorAll('*').length;
+
+    let heapStr = 'N/A';
+    if (performance.memory) {
+      const usedMB = (performance.memory.usedJSHeapSize / (1024 * 1024)).toFixed(1);
+      const totalMB = (performance.memory.totalJSHeapSize / (1024 * 1024)).toFixed(1);
+      heapStr = `${usedMB} / ${totalMB} MB`;
+    }
+
+    // ── 6. Orientation ──
+    const orientStr = screen.orientation ? screen.orientation.type.replace('-primary', '').replace('-secondary', ' (sec)') : 'N/A';
+
+    // ── 7. Capabilities ──
+    const swSupport = 'serviceWorker' in navigator ? 'Supported' : 'Not Supported';
+    const wasmSupport = typeof WebAssembly === 'object' ? 'Supported' : 'Not Supported';
+    const notifPerm = typeof Notification !== 'undefined' ? Notification.permission : 'N/A';
+    const pdfSupport = navigator.pdfViewerEnabled !== undefined ? (navigator.pdfViewerEnabled ? 'Yes' : 'No') : 'Unknown';
+    const rtcSupport = typeof RTCPeerConnection !== 'undefined' ? 'Supported' : 'Not Supported';
+    const gamepadSupport = 'getGamepads' in navigator ? 'Supported' : 'Not Supported';
+
+    // ── 8. Referrer ──
+    const refStr = document.referrer || 'Direct / None';
+
+    setSystemSpecs({
+      browser: getBrowserInfo(),
+      os: getOSInfo(),
+      platform: navigator.platform || navigator.userAgentData?.platform || 'Unknown',
+      cores: navigator.hardwareConcurrency || 'N/A',
+      memory: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'N/A',
+      screenRes: `${window.screen.width}x${window.screen.height}`,
+      viewportRes: `${window.innerWidth}x${window.innerHeight}`,
+      aspectRatio: aspect,
+      colorDepth: `${window.screen.colorDepth || 24}-bit`,
+      orientation: orientStr,
+      dpr: window.devicePixelRatio || 1,
+      connection: connInfo,
+      gpuVendor: gpuV,
+      gpuRenderer: gpuR,
+      glVersion: glVer,
+      glslVersion: glslVer,
+      maxTextureSize: maxTexSize,
+      language: navigator.language || 'en',
+      allLanguages: (navigator.languages || []).join(', ') || navigator.language || 'en',
+      cookies: navigator.cookieEnabled ? 'Enabled' : 'Disabled',
+      online: navigator.onLine ? 'Online' : 'Offline',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'N/A',
+      localTime: new Date().toLocaleTimeString(),
+      ip: 'Fetching...',
+      location: 'Fetching...',
+      isp: 'Fetching...',
+      coords: 'Fetching...',
+      postal: 'Fetching...',
+      currency: 'Fetching...',
+      battery: 'N/A',
+      storage: 'Querying...',
+      touch: touchVal,
+      rtt: rttVal,
+      colorScheme: schemeVal,
+      dnt: dntVal,
+      supportedApis: storageApisList || 'None',
+      visitCount: visitCount.toString(),
+      firstVisit: firstVisitStr,
+      lastVisit: lastVisitStr,
+      sessionTime: '0s',
+      pageLoadTime: pageLoad,
+      domNodes: domNodes.toString(),
+      jsHeapSize: heapStr,
+      referrer: refStr,
+      serviceWorker: swSupport,
+      webAssembly: wasmSupport,
+      notifications: notifPerm,
+      pdfViewer: pdfSupport,
+      webrtc: rtcSupport,
+      gamepad: gamepadSupport
+    });
+
+    // ── 9. Query GeoIP & Location Details ──
+    fetch('https://ipapi.co/json/')
+      .then(res => res.json())
+      .then(data => {
+        setSystemSpecs(prev => ({
+          ...prev,
+          ip: data.ip || 'N/A',
+          location: `${data.city || '?'}, ${data.region || '?'}, ${data.country_name || '?'}`,
+          isp: data.org || 'N/A',
+          coords: `${data.latitude || '?'}, ${data.longitude || '?'}`,
+          postal: data.postal || 'N/A',
+          currency: `${data.currency || 'N/A'} (${data.currency_name || '?'})`
+        }));
+      })
+      .catch(() => {
+        fetch('https://api.ipify.org?format=json')
+          .then(res => res.json())
+          .then(data => {
+            setSystemSpecs(prev => ({ 
+              ...prev, 
+              ip: data.ip || 'N/A', 
+              location: 'Blocked / Timeout', 
+              isp: 'Unknown',
+              coords: 'N/A',
+              postal: 'N/A',
+              currency: 'N/A'
+            }));
+          })
+          .catch(() => {
+            setSystemSpecs(prev => ({ 
+              ...prev, 
+              ip: 'Query Failed', 
+              location: 'Query Failed', 
+              isp: 'Query Failed',
+              coords: 'N/A',
+              postal: 'N/A',
+              currency: 'N/A'
+            }));
+          });
+      });
+
+    // ── 10. Query Battery Status ──
+    if (navigator.getBattery) {
+      navigator.getBattery().then(battery => {
+        const updateBattery = () => {
+          setSystemSpecs(prev => ({
+            ...prev,
+            battery: `${Math.round(battery.level * 100)}% (${battery.charging ? 'Charging' : 'Discharging'})`
+          }));
+        };
+        updateBattery();
+        battery.addEventListener('levelchange', updateBattery);
+        battery.addEventListener('chargingchange', updateBattery);
+      }).catch(() => {});
+    }
+
+    // ── 11. Query Storage Estimate ──
+    if (navigator.storage && navigator.storage.estimate) {
+      navigator.storage.estimate().then(estimate => {
+        const quotaGB = (estimate.quota / (1024 * 1024 * 1024)).toFixed(1);
+        const usageMB = (estimate.usage / (1024 * 1024)).toFixed(1);
+        setSystemSpecs(prev => ({
+          ...prev,
+          storage: `${usageMB} MB used / ${quotaGB} GB quota`
+        }));
+      }).catch(() => {});
+    }
+
+    // ── 12. Live ticker: session time, local time, viewport, DOM nodes, heap ──
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - sessionStartRef.current) / 1000);
+      const hrs = Math.floor(elapsed / 3600);
+      const mins = Math.floor((elapsed % 3600) / 60);
+      const secs = elapsed % 60;
+      const sessionStr = hrs > 0 ? `${hrs}h ${mins}m ${secs}s` : mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+
+      // Save cumulative time
+      try {
+        const prev = parseInt(localStorage.getItem(TOTAL_TIME_KEY) || '0', 10);
+        localStorage.setItem(TOTAL_TIME_KEY, (prev + 1).toString());
+      } catch (e) {}
+
+      let liveHeap = 'N/A';
+      if (performance.memory) {
+        liveHeap = `${(performance.memory.usedJSHeapSize / (1024 * 1024)).toFixed(1)} / ${(performance.memory.totalJSHeapSize / (1024 * 1024)).toFixed(1)} MB`;
+      }
+
+      setSystemSpecs(prev => ({
+        ...prev,
+        localTime: new Date().toLocaleTimeString(),
+        viewportRes: `${window.innerWidth}x${window.innerHeight}`,
+        sessionTime: sessionStr,
+        domNodes: document.querySelectorAll('*').length.toString(),
+        jsHeapSize: liveHeap,
+        online: navigator.onLine ? 'Online' : 'Offline'
+      }));
+    }, 1000);
+
+    // ── 13. Save time on page unload ──
+    const handleUnload = () => {
+      try {
+        const elapsed = Math.floor((Date.now() - sessionStartRef.current) / 1000);
+        const prev = parseInt(localStorage.getItem(TOTAL_TIME_KEY) || '0', 10);
+        localStorage.setItem(TOTAL_TIME_KEY, (prev + elapsed).toString());
+      } catch (e) {}
+    };
+    window.addEventListener('beforeunload', handleUnload);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('beforeunload', handleUnload);
+    };
+  }, []);
 
   const skyboxCanvasRef = useRef(null);
   const steveCanvasRef = useRef(null);
@@ -15,6 +424,122 @@ export default function App() {
   // Refs for sharing mouse coordinate changes between React and Three.js loop
   const mouseRef = useRef({ x: 0, y: 0 });
   const lastMousePosRef = useRef({ x: 0, y: 0 });
+
+  // Handle background music playing and volume controls
+  const audioRef = useRef(null);
+  const fadeOutIntervalRef = useRef(null);
+  const musicVolumeRef = useRef(musicVolume);
+
+  // Sync state to ref for use inside closures like onended
+  useEffect(() => {
+    musicVolumeRef.current = musicVolume;
+  }, [musicVolume]);
+
+  const notificationTimeoutRef = useRef(null);
+
+  const playRandomMusic = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    const randomTrack = PLAYLIST[Math.floor(Math.random() * PLAYLIST.length)];
+    audioRef.current = new Audio(randomTrack);
+    audioRef.current.volume = musicVolumeRef.current / 100;
+    
+    const songName = randomTrack.replace('/music/', '').replace('.mp3', '');
+    setCurrentSongName(songName);
+
+    const triggerNotification = () => {
+      setShowSongNotification(true);
+      if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+      if (!KEEP_MUSIC_NOTIFICATION_ALWAYS_ACTIVE) {
+        notificationTimeoutRef.current = setTimeout(() => {
+          setShowSongNotification(false);
+        }, 5000);
+      }
+    };
+
+    audioRef.current.onended = () => {
+      playRandomMusic();
+    };
+
+    audioRef.current.play().then(() => {
+      triggerNotification();
+    }).catch((err) => {
+      console.warn("Audio play blocked until user interaction:", err);
+      const unlockAudio = () => {
+        if (audioRef.current && musicVolumeRef.current > 0) {
+          audioRef.current.play().then(triggerNotification).catch(e => console.warn(e));
+        }
+        window.removeEventListener('click', unlockAudio);
+      };
+      window.addEventListener('click', unlockAudio);
+    });
+  }, []); // playlist is constant
+
+  useEffect(() => {
+    if (musicVolume > 0) {
+      // User turned music ON
+      if (fadeOutIntervalRef.current) {
+        clearInterval(fadeOutIntervalRef.current);
+        fadeOutIntervalRef.current = null;
+      }
+
+      if (!audioRef.current || audioRef.current.paused) {
+        // If there's no music playing right now, play a random track
+        playRandomMusic();
+      } else {
+        // If music is already playing, just update its volume instantly
+        audioRef.current.volume = musicVolume / 100;
+      }
+    } else if (musicVolume === 0 && audioRef.current && !audioRef.current.paused) {
+      // User turned music OFF: Fade out to 0 over 10 seconds
+      const initialVolume = audioRef.current.volume;
+      const steps = 100; // 100 updates
+      const volumeStep = initialVolume / steps;
+      let currentStep = 0;
+
+      if (fadeOutIntervalRef.current) {
+        clearInterval(fadeOutIntervalRef.current);
+      }
+
+      fadeOutIntervalRef.current = setInterval(() => {
+        currentStep++;
+        if (audioRef.current) {
+          const newVol = Math.max(0, initialVolume - (volumeStep * currentStep));
+          audioRef.current.volume = newVol;
+          
+          if (currentStep >= steps || newVol === 0) {
+            // Fade out complete (10 secs)
+            clearInterval(fadeOutIntervalRef.current);
+            fadeOutIntervalRef.current = null;
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+            audioRef.current = null; // Reset player
+          }
+        } else {
+          clearInterval(fadeOutIntervalRef.current);
+        }
+      }, 100); // 100ms * 100 steps = 10 seconds
+    }
+
+    return () => {
+      if (fadeOutIntervalRef.current) clearInterval(fadeOutIntervalRef.current);
+    };
+  }, [musicVolume, playRandomMusic]);
+
+  // Clean up completely on app unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, []);
+
+  // Sync text scale accessibility settings to CSS custom property
+  useEffect(() => {
+    document.documentElement.style.setProperty('--text-scale', textScale.toString());
+  }, [textScale]);
 
   // 0. Auto GUI Scaler (Replicates Java Edition GUI Scale Auto)
   useEffect(() => {
@@ -30,15 +555,152 @@ export default function App() {
     return () => window.removeEventListener('resize', updateScale);
   }, []);
 
+  // Sync mode and reduced-motion states with localStorage & body classes
+  useEffect(() => {
+    localStorage.setItem('steve-portfolio-mode', portfolioMode);
+    if (portfolioMode === 'developer') {
+      document.body.classList.add('developer-mode');
+      document.body.classList.remove('recruiter-mode');
+    } else {
+      document.body.classList.add('recruiter-mode');
+      document.body.classList.remove('developer-mode');
+    }
+  }, [portfolioMode]);
+
+  useEffect(() => {
+    localStorage.setItem('steve-reduced-motion', reducedMotion.toString());
+    if (reducedMotion) {
+      document.body.classList.add('reduced-motion-active');
+    } else {
+      document.body.classList.remove('reduced-motion-active');
+    }
+  }, [reducedMotion]);
+
+  // Sync activeSection with URL path for standard routing
+  useEffect(() => {
+    function handlePopState() {
+      const path = window.location.pathname;
+      if (path === '/singleplayer') setActiveSection('profile');
+      else if (path === '/multiplayer') setActiveSection('projects');
+      else if (path === '/achievements') setActiveSection('skills');
+      else if (path === '/options') setActiveSection('contact');
+      else setActiveSection('menu');
+    }
+    window.addEventListener('popstate', handlePopState);
+    handlePopState(); // Run initial check
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigateTo = (section) => {
+    let path = '/';
+    if (section === 'profile') path = '/singleplayer';
+    else if (section === 'projects') path = '/multiplayer';
+    else if (section === 'skills') path = '/achievements';
+    else if (section === 'contact') path = '/options';
+
+    // Only push state if the path actually changed
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
+    setActiveSection(section);
+  };
+
+  // Global click sound effect
+  const clickAudioRef = useRef(null);
+  useEffect(() => {
+    clickAudioRef.current = new Audio('/Click.ogg');
+    
+    const handleGlobalClick = (e) => {
+      // Check if clicked element or its parent is a button or slider
+      const isButton = e.target.closest('.mc-button') || 
+                       e.target.closest('button') || 
+                       e.target.closest('input[type="range"]');
+      if (isButton && clickAudioRef.current) {
+        clickAudioRef.current.volume = buttonVolume / 100;
+        clickAudioRef.current.currentTime = 0;
+        clickAudioRef.current.play().catch(err => console.warn('Audio play blocked:', err));
+      }
+    };
+    document.addEventListener('click', handleGlobalClick, true);
+    
+    return () => {
+      document.removeEventListener('click', handleGlobalClick, true);
+    };
+  }, [buttonVolume]);
+
+  // 30-Second Inactivity Stalker Mode
+  useEffect(() => {
+    let inactivityTimer;
+    
+    const resetTimer = () => {
+      if (isStalkerMode) setIsStalkerMode(false);
+      clearTimeout(inactivityTimer);
+      inactivityTimer = setTimeout(() => {
+        setIsStalkerMode(true);
+      }, 30000); // 30 seconds
+    };
+
+    // Attach listeners
+    window.addEventListener('mousemove', resetTimer);
+    window.addEventListener('keydown', resetTimer);
+    window.addEventListener('click', resetTimer);
+    window.addEventListener('scroll', resetTimer);
+
+    // Initial start
+    resetTimer();
+
+    return () => {
+      clearTimeout(inactivityTimer);
+      window.removeEventListener('mousemove', resetTimer);
+      window.removeEventListener('keydown', resetTimer);
+      window.removeEventListener('click', resetTimer);
+      window.removeEventListener('scroll', resetTimer);
+    };
+  }, [isStalkerMode]);
+
+  // Esc key navigation back to menu
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (activeSection !== 'menu') {
+          navigateTo('menu');
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeSection]);
+
+  // F3 Monospace Sitemap key listeners & Escape listener
+  useEffect(() => {
+    const handleKeyDownGlobal = (e) => {
+      if (e.key === 'F3') {
+        setF3Open(prev => !prev);
+        e.preventDefault();
+      } else if (e.key === 'Escape' && f3Open) {
+        setF3Open(false);
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDownGlobal);
+    return () => window.removeEventListener('keydown', handleKeyDownGlobal);
+  }, [f3Open]);
+
+  // Mobile fast-travel default trigger
+  useEffect(() => {
+    if (window.innerWidth <= 768) {
+      setF3Open(true);
+    }
+  }, []);
+
   // 1. WebGL Skybox Three.js Instance
   useEffect(() => {
-    const canvas = skyboxCanvasRef.current;
-    if (!canvas) return;
+    const container = skyboxCanvasRef.current;
+    if (!container) return;
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(85, window.innerWidth / window.innerHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({
-      canvas: canvas,
       antialias: true,
       alpha: false,
       powerPreference: 'high-performance'
@@ -46,6 +708,8 @@ export default function App() {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.domElement.id = 'skyboxCanvas';
+    container.appendChild(renderer.domElement);
 
     // Load the 6 Panorama textures
     const textureLoader = new THREE.TextureLoader();
@@ -75,12 +739,28 @@ export default function App() {
     scene.add(skybox);
     skybox.rotation.x = -8.5 * Math.PI / 180; // Official tilt
 
-    const rotSpeed = (2 * Math.PI) / (120 * 60); // 120s rotation
+    const rotSpeed = (2 * Math.PI) / (120 * 60); // 120s rotation (base speed = 100%)
     let frameId;
 
     const animate = () => {
       frameId = requestAnimationFrame(animate);
-      skybox.rotation.y += rotSpeed;
+      
+      const hasReducedMotion = document.body.classList.contains('reduced-motion-active');
+      if (!hasReducedMotion) {
+        // Read dynamic skybox speed multiplier (0-100)
+        const speedVal = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--skybox-speed'));
+        const multiplier = isNaN(speedVal) ? 0.5 : speedVal / 100;
+        skybox.rotation.y += rotSpeed * multiplier;
+      }
+
+      // Read dynamic FOV
+      const fovVal = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fov'));
+      const targetFov = isNaN(fovVal) ? 70 : fovVal;
+      if (camera.fov !== targetFov) {
+        camera.fov = targetFov;
+        camera.updateProjectionMatrix();
+      }
+      
       renderer.render(scene, camera);
     };
     animate();
@@ -100,32 +780,37 @@ export default function App() {
         if (mat.map) mat.map.dispose();
         mat.dispose();
       });
+      if (container && container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
+      }
       renderer.dispose();
     };
   }, []);
 
   // 2. 3D Steve Character Three.js Instance (Tied to horror status state)
   useEffect(() => {
-    const canvas = steveCanvasRef.current;
-    if (!canvas) return;
+    const container = steveCanvasRef.current;
+    if (!container) return;
 
-    const parent = canvas.parentElement;
+    const parent = container.parentElement;
     const scene = new THREE.Scene();
     
     // Arrays to collect resources for unified garbage collection disposal on unmount
     const geometries = [];
     const materials = [];
+    const steveMaterials = []; // Specifically for Steve's body part materials to manipulate during horror mode
     const camera = new THREE.PerspectiveCamera(32, parent.clientWidth / parent.clientHeight, 0.1, 100);
     camera.position.set(0, -0.2, 13.3);
 
     const renderer = new THREE.WebGLRenderer({
-      canvas: canvas,
       antialias: true,
       alpha: true
     });
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(parent.clientWidth, parent.clientHeight);
+    renderer.domElement.id = 'steveCanvas';
+    container.appendChild(renderer.domElement);
 
     // Lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
@@ -181,6 +866,7 @@ export default function App() {
 
       geometries.push(innerGeo);
       materials.push(innerMat);
+      steveMaterials.push(innerMat);
 
       if (hasOuter) {
         const outerGeo = new THREE.BoxGeometry(w * 1.03, h * 1.03, d * 1.03);
@@ -196,6 +882,7 @@ export default function App() {
 
         geometries.push(outerGeo);
         materials.push(outerMat);
+        steveMaterials.push(outerMat);
       }
       return { group };
     }
@@ -252,97 +939,82 @@ export default function App() {
     // 3D Gun (nested inside Right Arm)
     const gunGroup = new THREE.Group();
     gunGroup.position.set(0, -0.88, 0.08); 
-    gunGroup.rotation.x = -Math.PI / 2; // Hanging down initially
+    gunGroup.rotation.x = -Math.PI / 2; // Resting: barrel hangs along arm
     rightArm.group.add(gunGroup);
 
-    // Load custom gun image and build extruded 3D voxel gun with textures
-    const gunTexture = textureLoader.load('/assets/gun.png');
-    gunTexture.colorSpace = THREE.SRGBColorSpace;
-    gunTexture.generateMipmaps = false;
-    gunTexture.magFilter = THREE.NearestFilter;
-    gunTexture.minFilter = THREE.NearestFilter;
-
-    const gunMat = new THREE.MeshBasicMaterial({ map: gunTexture, transparent: true });
-    materials.push(gunMat);
-
+    // Build 3D gun from pixel data — each visible pixel becomes a colored voxel cube
     const gunImg = new Image();
     gunImg.src = '/assets/gun.png';
     gunImg.onload = () => {
+      const RES = 32;
       const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = 32;
-      tempCanvas.height = 32;
+      tempCanvas.width = RES;
+      tempCanvas.height = RES;
       const ctx = tempCanvas.getContext('2d');
-      ctx.drawImage(gunImg, 0, 0, 32, 32);
-      const imgData = ctx.getImageData(0, 0, 32, 32).data;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(gunImg, 0, 0, RES, RES);
+      const imgData = ctx.getImageData(0, 0, RES, RES).data;
 
-      // Find bounds of non-transparent and non-pink pixels to center the gun
-      let minX = 32, maxX = 0, minY = 32, maxY = 0;
+      // Find bounding box of non-magenta pixels
+      let minX = RES, maxX = 0, minY = RES, maxY = 0;
       let hasPixels = false;
-      for (let y = 0; y < 32; y++) {
-        for (let x = 0; x < 32; x++) {
-          const idx = (y * 32 + x) * 4;
-          const r = imgData[idx];
-          const g = imgData[idx + 1];
-          const b = imgData[idx + 2];
-          const alpha = imgData[idx + 3];
-
-          // Check for pink/magenta background chroma key (#ff00ff or similar)
-          const isChromaPink = r > 180 && g < 120 && b > 180;
-          if (alpha > 128 && !isChromaPink) {
-            if (x < minX) minX = x;
-            if (x > maxX) maxX = x;
-            if (y < minY) minY = y;
-            if (y > maxY) maxY = y;
-            hasPixels = true;
-          }
-        }
-      }
-
-      if (!hasPixels) return;
-
-      const centerX = (minX + maxX) / 2;
-      const centerY = (minY + maxY) / 2;
-
-      // Scale each pixel to a voxel
-      const voxelSize = 0.024;
-      const thickness = 0.09; // Extruded thickness of the gun pixels (fits classic Minecraft proportions)
-
-      // Helper to apply UV mapping to voxel faces with padding to prevent color bleed
-      const applyVoxelUVs = (geo, px, py) => {
-        const uvs = geo.attributes.uv;
-        const pad = 0.25; // 25% pixel padding to prevent texture bleeding from neighboring pink pixels
-        for (let i = 0; i < uvs.count; i++) {
-          let u = uvs.getX(i);
-          let v = uvs.getY(i);
-          
-          // Map u and v to the specific pixel's UV coordinate bounds with padding
-          u = (px + pad + u * (1 - 2 * pad)) / 32;
-          v = (32 - py - 1 + pad + v * (1 - 2 * pad)) / 32;
-          
-          uvs.setXY(i, u, v);
-        }
-        uvs.needsUpdate = true;
-      };
-
-      for (let y = 0; y < 32; y++) {
-        for (let x = 0; x < 32; x++) {
-          const idx = (y * 32 + x) * 4;
+      for (let y = 0; y < RES; y++) {
+        for (let x = 0; x < RES; x++) {
+          const idx = (y * RES + x) * 4;
           const r = imgData[idx];
           const g = imgData[idx + 1];
           const b = imgData[idx + 2];
           const a = imgData[idx + 3];
 
-          const isChromaPink = r > 180 && g < 120 && b > 180;
+          // Check if pixel is close to magenta (Chroma key)
+          const isChromaPink = r > g + 25 && b > g + 25;
           if (a > 128 && !isChromaPink) {
-            const voxelGeo = new THREE.BoxGeometry(thickness, voxelSize, voxelSize);
-            applyVoxelUVs(voxelGeo, x, y);
-            geometries.push(voxelGeo);
+            minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+            minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+            hasPixels = true;
+          }
+        }
+      }
+      if (!hasPixels) return;
 
-            const voxelMesh = new THREE.Mesh(voxelGeo, gunMat);
-            
-            // Align gun plane with Y-Z
-            const localY = (centerY - y) * voxelSize + 0.08;
-            const localZ = (centerX - x) * voxelSize + 0.05;
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+
+      const voxelSize = 0.75 / Math.max(maxX - minX + 1, maxY - minY + 1);
+      const depth = voxelSize * 3; // Item thickness
+
+      // Cache materials by color to reuse
+      const matCache = {};
+      const getVoxelMat = (r, g, b) => {
+        const hex = (r << 16) | (g << 8) | b;
+        if (!matCache[hex]) {
+          const mat = new THREE.MeshBasicMaterial({ color: hex });
+          matCache[hex] = mat;
+          materials.push(mat);
+        }
+        return matCache[hex];
+      };
+
+      // Shared geometry for all cubes
+      const sharedGeo = new THREE.BoxGeometry(depth, voxelSize, voxelSize);
+      geometries.push(sharedGeo);
+
+      for (let y = 0; y < RES; y++) {
+        for (let x = 0; x < RES; x++) {
+          const idx = (y * RES + x) * 4;
+          const r = imgData[idx];
+          const g = imgData[idx + 1];
+          const b = imgData[idx + 2];
+          const a = imgData[idx + 3];
+
+          const isChromaPink = r > g + 25 && b > g + 25;
+          if (a > 128 && !isChromaPink) {
+            const voxelMesh = new THREE.Mesh(sharedGeo, getVoxelMat(r, g, b));
+
+            // Y = gun height (image Y), Z = barrel direction (image X)
+            // barrel tip = left of image (small x) = +Z
+            const localZ = (centerX - x) * voxelSize;
+            const localY = (centerY - y) * voxelSize;
 
             voxelMesh.position.set(0, localY, localZ);
             gunGroup.add(voxelMesh);
@@ -350,9 +1022,6 @@ export default function App() {
         }
       }
     };
-
-    // Expose gunTexture to effect scope for cleanup
-    window._gunTexture = gunTexture;
 
     gunGroup.visible = false;
 
@@ -362,15 +1031,26 @@ export default function App() {
 
     const animate = () => {
       frameId = requestAnimationFrame(animate);
-      time += 0.035;
+      
+      const hasReducedMotion = document.body.classList.contains('reduced-motion-active');
+      if (!hasReducedMotion) {
+        time += 0.035;
+      }
 
       // Access isHorror dynamically from reactive body class to bypass react closure stale state
       const horrorModeActive = document.body.classList.contains('horror-active');
 
+      if (horrorModeActive) {
+        steveMaterials.forEach(mat => mat.color.setHex(0xff7777)); // Creepy red tint
+      } else {
+        steveMaterials.forEach(mat => mat.color.setHex(0xffffff)); // Normal
+      }
+
       // Dynamically sync Steve's size scale: swells to 1.5 when hovering over Quit Game (horrorModeActive), otherwise baseScale
       const baseScale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--steve-scale')) || 0.7;
       const targetScale = horrorModeActive ? 1.5 : baseScale;
-      const nextScale = steveGroup.scale.x + (targetScale - steveGroup.scale.x) * 0.12;
+      const lerpFactor = hasReducedMotion ? 1.0 : 0.12;
+      const nextScale = steveGroup.scale.x + (targetScale - steveGroup.scale.x) * lerpFactor;
       steveGroup.scale.setScalar(nextScale);
 
       // Dynamically position the name tag relative to Steve's head scale and bobbing
@@ -458,6 +1138,9 @@ export default function App() {
       if (!parent) return;
       const rect = parent.getBoundingClientRect();
       
+      // Prevent wild mouse vector tracking when display: none sets rect coordinates to 0,0
+      if (rect.width === 0 && rect.height === 0) return;
+
       // Steve's head center is roughly centered horizontally and 20% down from the container top
       const steveCenterX = rect.left + rect.width / 2;
       const steveCenterY = rect.top + rect.height * 0.2;
@@ -484,18 +1167,120 @@ export default function App() {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('resize', handleResize);
       
-      // Clean up skin and gun textures
-      skinTexture.dispose();
-      if (window._gunTexture) window._gunTexture.dispose();
+      // Prevent caching bug during hot-reloads by not disposing the loaded texture
+      // skinTexture.dispose();
 
       // Clean up all loaded geometries and materials
       geometries.forEach(geo => geo.dispose());
       materials.forEach(mat => mat.dispose());
 
+      if (container && container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
+      }
       // Dispose the WebGL renderer to free GPU resources
       renderer.dispose();
     };
   }, []);
+
+  // 2.5 Shadow Stalker Steve (Triggers on 30s inactivity)
+  useEffect(() => {
+    if (!isStalkerMode) return;
+    const container = stalkerCanvasRef.current;
+    if (!container) return;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(32, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 0, 15);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    const stalkerGroup = new THREE.Group();
+
+    // Reusable voxel builder for the shadow
+    const createShadowLimb = (w, h, d) => {
+      const geo = new THREE.BoxGeometry(w, h, d);
+      const mat = new THREE.MeshBasicMaterial({ color: 0x050505 }); // Near black shadow
+      const mesh = new THREE.Mesh(geo, mat);
+      const group = new THREE.Group();
+      group.add(mesh);
+      return { group, geo, mat };
+    };
+
+    const head = createShadowLimb(2, 2, 2);
+    head.group.position.y = 3;
+    stalkerGroup.add(head.group);
+
+    const body = createShadowLimb(2, 3, 1);
+    body.group.position.y = 0.5;
+    stalkerGroup.add(body.group);
+
+    const rArm = createShadowLimb(1, 3, 1);
+    rArm.group.position.set(-1.5, 0.5, 0);
+    stalkerGroup.add(rArm.group);
+
+    const lArm = createShadowLimb(1, 3, 1);
+    lArm.group.position.set(1.5, 0.5, 0);
+    stalkerGroup.add(lArm.group);
+
+    scene.add(stalkerGroup);
+
+    let frameId;
+    let time = 0;
+    const mouse = { x: 0, y: 0 };
+
+    const handleMouseMove = (e) => {
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+
+    const animate = () => {
+      frameId = requestAnimationFrame(animate);
+      time += 0.05;
+
+      // Float around randomly but smoothly using sine waves
+      stalkerGroup.position.x = Math.sin(time * 0.5) * 5 + Math.cos(time * 0.3) * 2;
+      stalkerGroup.position.y = Math.cos(time * 0.4) * 3 + Math.sin(time * 0.2) * 2;
+      
+      // Make the entire body face the cursor
+      const targetX = mouse.x * 10;
+      const targetY = mouse.y * 10;
+      stalkerGroup.lookAt(targetX, targetY, 5); // Look slightly forward
+
+      // Animate limbs to look like a creepy hover
+      rArm.group.rotation.x = Math.sin(time) * 0.2 - 0.5;
+      lArm.group.rotation.x = Math.cos(time) * 0.2 - 0.5;
+
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    const handleResize = () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('resize', handleResize);
+      
+      head.geo.dispose(); head.mat.dispose();
+      body.geo.dispose(); body.mat.dispose();
+      rArm.geo.dispose(); rArm.mat.dispose();
+      lArm.geo.dispose(); lArm.mat.dispose();
+      
+      if (container && container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
+      }
+      renderer.dispose();
+    };
+  }, [isStalkerMode]);
 
   // 3. Document body class synchronizer (React state -> body DOM class)
   useEffect(() => {
@@ -614,17 +1399,18 @@ export default function App() {
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
       
       {/* Dynamic Fullscreen Skybox canvas */}
-      <canvas id="skyboxCanvas" ref={skyboxCanvasRef}></canvas>
+      <div id="skyboxCanvasContainer" ref={skyboxCanvasRef} style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 0 }}></div>
       
       {/* Screen Vignette Overlay */}
       <div className="vignette"></div>
       {/* 3D Steve Character canvas viewport container — always mounted, hidden when not on menu */}
       <div className="steve-container" style={{ display: activeSection === 'menu' ? 'flex' : 'none' }}>
         <div className="steve-nametag">RaghavNotFound</div>
-        <canvas id="steveCanvas" ref={steveCanvasRef}></canvas>
+        <div id="steveCanvasContainer" ref={steveCanvasRef} style={{ width: '100%', height: '100%', pointerEvents: 'auto' }}></div>
       </div>
 
-      {/* JUMPSCARE OVERLAY */}
+
+          {/* JUMPSCARE OVERLAY */}
       {isQuitJumpscare && (
         <div style={{
           position: 'absolute',
@@ -651,187 +1437,377 @@ export default function App() {
         </div>
       )}
 
-      {/* MAIN INTERFACE OVERLAY */}
+        {/* MAIN INTERFACE OVERLAY */}
       <div className="overlay">
         
+        {/* SHADOW STEVE STALKER CANVAS (rendered above all UI) */}
+        {isStalkerMode && (
+          <div 
+            ref={stalkerCanvasRef} 
+            style={{ 
+              position: 'fixed', 
+              top: 0, left: 0, 
+              width: '100vw', height: '100vh', 
+              zIndex: 9999, 
+              pointerEvents: 'none' 
+            }} 
+          />
+        )}
 
-        {/* Title Logo Block */}
-        <div className="title-block">
-          <img src="/assets/minecraft.png" alt="Minecraft" className="title-logo" draggable="false" />
-          <img src="/assets/edition.png" alt="Java Edition" className="title-edition" draggable="false" />
-          <div className="splash-text">Also try Terraria!</div>
-        </div>
+        {/* Temporary Dev Mode Toggle Button */}
+        <button 
+          className="mc-btn"
+          style={{ position: 'absolute', top: 'calc(4 * var(--mu))', right: 'calc(4 * var(--mu))', width: 'auto', padding: '0 calc(4 * var(--mu))', zIndex: 1000, pointerEvents: 'auto' }}
+          onClick={() => setPortfolioMode(prev => prev === 'recruiter' ? 'developer' : 'recruiter')}
+        >
+          <span className="mc-btn-inner">Mode: {portfolioMode === 'recruiter' ? 'Recruiter' : 'Dev'}</span>
+        </button>
 
         {/* Dynamic Section Renderer */}
         {activeSection === 'menu' && (
-          <div className="menu-buttons">
-            <button className={`mc-btn ${selectedBtnId === 'singleplayer' ? 'selected-btn' : ''}`} onClick={() => setActiveSection('profile')}>
-              <span className="mc-btn-inner">Singleplayer</span>
-            </button>
-            <button className={`mc-btn ${selectedBtnId === 'multiplayer' ? 'selected-btn' : ''}`} onClick={() => setActiveSection('projects')}>
-              <span className="mc-btn-inner">Multiplayer</span>
-            </button>
-            <button className={`mc-btn ${selectedBtnId === 'realms' ? 'selected-btn' : ''}`} onClick={() => setActiveSection('skills')}>
-              <span className="mc-btn-inner">Minecraft Realms</span>
-            </button>
-            <div className="menu-row bottom-row">
-              <button className={`mc-btn icon-btn lang ${selectedBtnId === 'lang' ? 'selected-btn' : ''}`} title="Language" onClick={() => alert("Language settings are decorative in this portfolio.")}>
-                <span className="mc-btn-inner">
-                  <img src="/assets/Icon_Language.png" alt="Lang" className="lang-img" />
-                </span>
-              </button>
-              <button className={`mc-btn half btn-options ${selectedBtnId === 'options' ? 'selected-btn' : ''}`} onClick={() => setActiveSection('contact')}>
-                <span className="mc-btn-inner">Options...</span>
-              </button>
-              <button 
-                className={`mc-btn half btn-quit ${selectedBtnId === 'quit' ? 'selected-btn' : ''}`} 
-                id="btnQuit"
-                onClick={handleQuitGame}
-                onMouseEnter={() => setIsHorror(true)}
-                onMouseLeave={() => setIsHorror(false)}
-              >
-                <span className="mc-btn-inner">Quit Game</span>
-              </button>
-              <button className={`mc-btn icon-btn ${selectedBtnId === 'accessibility' ? 'selected-btn' : ''}`} title="Accessibility Options" onClick={() => alert("Accessibility options are decorative in this portfolio.")}>
-                <span className="mc-btn-inner">
-                  <img src="/assets/accessibility.png" alt="Accessibility" className="accessibility-img" />
-                </span>
-              </button>
-            </div>
-          </div>
+          <MainMenu 
+            navigateTo={navigateTo} 
+            musicVolume={musicVolume} 
+            handleQuitGame={handleQuitGame} 
+            setIsHorror={setIsHorror}
+          />
         )}
 
         {/* SINGLEPLAYER / ABOUT SCREEN */}
         {activeSection === 'profile' && (
-          <div className="gui-screen">
-            <div className="gui-title">Select World</div>
-            <div className="gui-panel">
-              <div className="bio-text">
-                <div className="bio-section">
-                  <div className="bio-heading">Creative Mode - Raghav Singhal</div>
-                  <p>Welcome to my world! I am Raghav Singhal (aka RaghavNotFound), a full-stack engineer who loves building highly premium, immersive, and custom web applications. I combine modern front-end technologies with 3D WebGL interfaces to deliver outstanding visual experiences.</p>
+          <div className="gui-screen" style={{ justifyContent: 'flex-start', padding: 0 }}>
+            {/* Title */}
+            <div className="gui-title" style={{ marginTop: 'calc(4 * var(--mu))', marginBottom: 'calc(3 * var(--mu))' }}>
+              {portfolioMode === 'recruiter' ? 'About Me' : 'Select World'}
+            </div>
+
+            {/* Search bar */}
+            <div style={{ margin: '0 auto calc(3 * var(--mu))', width: 'calc(304 * var(--mu))', border: 'calc(1 * var(--mu)) solid #a0a0a0', background: '#000', padding: 'calc(2 * var(--mu))', color: '#fff', textAlign: 'left', height: 'calc(10 * var(--mu))', display: 'flex', alignItems: 'center', fontFamily: "'Minecraft', sans-serif", fontSize: 'calc(5 * var(--font-mu))' }}>
+              <span style={{ opacity: 0.5 }}>_</span>
+            </div>
+
+            {/* World List — dark scrollable strip */}
+            <div className="mc-list-container">
+              {[
+                { id: 'origins', name: portfolioMode === 'recruiter' ? 'Education' : 'Origins World', filename: portfolioMode === 'recruiter' ? 'UPES University — B.Tech CS, Cybersecurity' : 'Origins World (08/21/21, 10:00 am)', desc: portfolioMode === 'recruiter' ? 'Computer Science · Cybersecurity Specialization' : 'Creative Mode, Version: Aug 2021', iconText: portfolioMode === 'recruiter' ? 'ED' : 'OW', color1: '#749938', color2: '#8b5a36', details: 'Computer Science major at UPES University. Explored core database architectures, hardware interrupts, and low-level compilation structures. Focus area: Cybersecurity and Web Architectures.' },
+                { id: 'current', name: portfolioMode === 'recruiter' ? 'Current Focus' : 'Current Save', filename: portfolioMode === 'recruiter' ? 'Full-Stack & 3D Web Engineering' : 'Current Save (01/24/24, 8:00 am)', desc: portfolioMode === 'recruiter' ? 'React · Three.js · Node.js · Performance' : 'Survival Mode, Version: Jan 2024', iconText: portfolioMode === 'recruiter' ? 'CF' : 'CS', color1: '#ffff55', color2: '#55aa55', details: 'Engineering deep interactive web client platforms. Mastering performance auditing, memory allocation optimization, three-dimensional scene graph structures, and secure client-side form connections.' },
+                { id: 'hardcore', name: portfolioMode === 'recruiter' ? 'Interests & Strengths' : 'Hardcore Mode', filename: portfolioMode === 'recruiter' ? 'Problem Solver · Security · Low-level Systems' : 'Hardcore Mode (02/20/20, 11:30 am)', desc: portfolioMode === 'recruiter' ? 'Debugging · Reverse Engineering · Firewalls' : 'Hardcore Mode, Version: Feb 2020', iconText: portfolioMode === 'recruiter' ? 'IS' : 'HM', color1: '#ff5555', color2: '#aa0000', details: 'Relentless problem solver. Enjoys diving into unknown source code bases, manually parsing raw byte streams, configuring custom firewalls, and exploring voxelized game mechanics.' },
+                { id: 'achievements', name: portfolioMode === 'recruiter' ? 'Certifications' : 'Achievements', filename: portfolioMode === 'recruiter' ? 'TryHackMe · Secure Full-Stack Dev · Networking' : 'Achievements (Ongoing)', desc: portfolioMode === 'recruiter' ? 'Ongoing Professional Development' : 'Creative Mode, Version: Ongoing', iconText: 'AC', color1: '#ffaa00', color2: '#aa5500', details: 'Completed extensive labs on TryHackMe, certified in secure full-stack development patterns, and built multi-threaded network tooling.' }
+              ].map(world => (
+                <div 
+                  key={world.id}
+                  onClick={() => setExpandedWorld(world.id)}
+                  onDoubleClick={() => setPlayingWorld(world)}
+                  className={`mc-list-item ${expandedWorld === world.id ? 'selected' : ''}`}
+                >
+                  {/* World Icon */}
+                  <div style={{ width: 'calc(16 * var(--mu))', height: 'calc(16 * var(--mu))', background: `linear-gradient(to bottom, ${world.color1} 40%, ${world.color2} 40%)`, marginRight: 'calc(4 * var(--mu))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', textShadow: 'calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #000', fontSize: 'calc(5.5 * var(--font-mu))', border: 'calc(1 * var(--mu)) solid #000', flexShrink: 0, imageRendering: 'pixelated' }}>
+                    {world.iconText}
+                  </div>
+                  {/* Details */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'calc(0.5 * var(--mu))' }}>
+                    <div style={{ color: '#fff', fontSize: 'calc(5 * var(--font-mu))', textShadow: 'calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #3f3f3f' }}>{world.name}</div>
+                    <div style={{ color: '#aaa', fontSize: 'calc(4 * var(--font-mu))', textShadow: 'calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #3f3f3f' }}>{world.filename}</div>
+                    <div style={{ color: '#aaa', fontSize: 'calc(4 * var(--font-mu))', textShadow: 'calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #3f3f3f' }}>{world.desc}</div>
+                  </div>
                 </div>
-                <div className="bio-section" style={{ marginTop: 'calc(6 * var(--mu))' }}>
-                  <div className="bio-heading">Survival Mode - Core Philosophy</div>
-                  <p>My code is optimized for hardware acceleration, low memory footprints, and clean responsive layouts. I believe in writing robust code that stands the test of time while keeping the aesthetic beautiful, premium, and state-of-the-art.</p>
-                </div>
+              ))}
+            </div>
+
+            {/* Footer Buttons — exactly like the screenshot */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'calc(4 * var(--mu))', marginTop: 'calc(3 * var(--mu))', paddingBottom: 'calc(4 * var(--mu))' }}>
+              {/* Row 1: Play Selected World | Create New World */}
+              <div style={{ display: 'flex', gap: 'calc(4 * var(--mu))', width: 'calc(304 * var(--mu))' }}>
+                <button className={`mc-btn ${expandedWorld ? '' : 'disabled'}`} style={{ width: '50%' }} onClick={() => {
+                  if (expandedWorld) {
+                    const worlds = [
+                      { id: 'origins', name: portfolioMode === 'recruiter' ? 'Education' : 'Origins World', details: 'Computer Science major at UPES University. Explored core database architectures, hardware interrupts, and low-level compilation structures. Focus area: Cybersecurity and Web Architectures.' },
+                      { id: 'current', name: portfolioMode === 'recruiter' ? 'Current Focus' : 'Current Save', details: 'Engineering deep interactive web client platforms. Mastering performance auditing, memory allocation optimization, three-dimensional scene graph structures, and secure client-side form connections.' },
+                      { id: 'hardcore', name: portfolioMode === 'recruiter' ? 'Interests & Strengths' : 'Hardcore Mode', details: 'Relentless problem solver. Enjoys diving into unknown source code bases, manually parsing raw byte streams, configuring custom firewalls, and exploring voxelized game mechanics.' },
+                      { id: 'achievements', name: portfolioMode === 'recruiter' ? 'Certifications' : 'Achievements', details: 'Completed extensive labs on TryHackMe, certified in secure full-stack development patterns, and built multi-threaded network tooling.' }
+                    ];
+                    const w = worlds.find(x => x.id === expandedWorld);
+                    if (w) setPlayingWorld(w);
+                  }
+                }}>
+                  <span className="mc-btn-inner">{portfolioMode === 'recruiter' ? 'View Details' : 'Play Selected World'}</span>
+                </button>
+                <button className="mc-btn" style={{ width: '50%' }} onClick={() => navigateTo('projects')}>
+                  <span className="mc-btn-inner">{portfolioMode === 'recruiter' ? 'View Projects' : 'Create New World'}</span>
+                </button>
+              </div>
+              {/* Row 2: Edit | Delete | Re-Create | Cancel */}
+              <div style={{ display: 'flex', gap: 'calc(4 * var(--mu))', width: 'calc(304 * var(--mu))' }}>
+                <button className="mc-btn" style={{ width: '25%' }} onClick={() => window.open('https://github.com/RaghavNotFound', '_blank')}>
+                  <span className="mc-btn-inner">{portfolioMode === 'recruiter' ? 'GitHub' : 'Edit'}</span>
+                </button>
+                <button className="mc-btn" style={{ width: '25%' }} onClick={() => window.open('https://linkedin.com', '_blank')}>
+                  <span className="mc-btn-inner">{portfolioMode === 'recruiter' ? 'LinkedIn' : 'Delete'}</span>
+                </button>
+                <button className="mc-btn" style={{ width: '25%' }} onClick={() => navigateTo('contact')}>
+                  <span className="mc-btn-inner">{portfolioMode === 'recruiter' ? 'Contact' : 'Re-Create'}</span>
+                </button>
+                <button className="mc-btn" style={{ width: '25%' }} onClick={() => navigateTo('menu')}>
+                  <span className="mc-btn-inner">Back</span>
+                </button>
               </div>
             </div>
-            <div className="gui-row">
-              <button className="mc-btn" onClick={() => setActiveSection('menu')}>
-                <span className="mc-btn-inner">Cancel</span>
-              </button>
-            </div>
+
+            {/* "Play" Modal Overlay */}
+            {playingWorld && (
+              <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ background: 'rgba(0,0,0,0.7)', border: 'calc(1 * var(--mu)) solid #555', padding: 'calc(6 * var(--mu))', width: '60%', maxWidth: 'calc(240 * var(--mu))', color: '#fff', fontFamily: "'Minecraft', sans-serif", fontSize: 'calc(5 * var(--font-mu))', textShadow: 'calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #3f3f3f', display: 'flex', flexDirection: 'column', gap: 'calc(4 * var(--mu))' }}>
+                  <div style={{ fontSize: 'calc(7 * var(--font-mu))', textAlign: 'center', color: '#ffff55' }}>{playingWorld.name}</div>
+                  <div style={{ lineHeight: '1.6', whiteSpace: 'pre-wrap', color: '#ddd' }}>{playingWorld.details}</div>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'calc(2 * var(--mu))' }}>
+                    <button className="mc-btn" style={{ width: 'calc(100 * var(--mu))' }} onClick={() => setPlayingWorld(null)}>
+                      <span className="mc-btn-inner">Done</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* MULTIPLAYER / PROJECTS SCREEN */}
         {activeSection === 'projects' && (
-          <div className="gui-screen">
-            <div className="gui-title">Play Multiplayer</div>
-            <div className="gui-panel">
-              
-              <a href="https://github.com/RaghavNotFound/mysterious-tesla" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-                <div className="server-item">
-                  <div className="server-icon">MT</div>
-                  <div className="server-details">
-                    <div className="server-name">mysterious-tesla</div>
-                    <div className="server-desc">React + Vite + Three.js Minecraft replica portfolio</div>
-                  </div>
-                  <div className="server-status">999/999</div>
-                </div>
-              </a>
-
-              <a href="https://github.com/RaghavNotFound" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-                <div className="server-item">
-                  <div className="server-icon">GH</div>
-                  <div className="server-details">
-                    <div className="server-name">Github Repositories</div>
-                    <div className="server-desc">Explore more of my open-source codebases and creations</div>
-                  </div>
-                  <div className="server-status">100/100</div>
-                </div>
-              </a>
-
+          <div className="gui-screen" style={{ justifyContent: 'flex-start', padding: 0 }}>
+            {/* Title */}
+            <div className="gui-title" style={{ marginTop: 'calc(4 * var(--mu))', marginBottom: 'calc(3 * var(--mu))' }}>
+              {portfolioMode === 'recruiter' ? 'Projects' : 'Play Multiplayer'}
             </div>
-            <div className="gui-row">
-              <button className="mc-btn" onClick={() => setActiveSection('menu')}>
-                <span className="mc-btn-inner">Cancel</span>
-              </button>
+
+            {/* Server/Project List — dark scrollable strip */}
+            <div className="mc-list-container">
+              {projectsData.projects.map(project => (
+                <div 
+                  key={project.id}
+                  onClick={() => setSelectedProject(selectedProject?.id === project.id ? null : project)}
+                  className={`mc-list-item ${selectedProject?.id === project.id ? 'selected' : ''}`}
+                  style={{ justifyContent: 'space-between' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    {/* Server Icon */}
+                    <div style={{ width: 'calc(16 * var(--mu))', height: 'calc(16 * var(--mu))', background: '#333', marginRight: 'calc(4 * var(--mu))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 'calc(6 * var(--font-mu))', border: 'calc(1 * var(--mu)) solid #555', flexShrink: 0 }}>
+                      {project.icon}
+                    </div>
+                    {/* Details */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'calc(0.5 * var(--mu))' }}>
+                      <div style={{ color: '#fff', fontSize: 'calc(5 * var(--font-mu))', textShadow: 'calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #3f3f3f' }}>{project.name}</div>
+                      <div style={{ color: '#aaa', fontSize: 'calc(4 * var(--font-mu))', textShadow: 'calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #3f3f3f' }}>{project.tagline}</div>
+                      <div style={{ color: '#55ffff', fontSize: 'calc(3.5 * var(--font-mu))', textShadow: 'calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #3f3f3f' }}>{project.stack.join(' · ')}</div>
+                    </div>
+                  </div>
+                  {/* Ping bars */}
+                  <div style={{ display: 'flex', gap: 'calc(0.5 * var(--mu))', alignItems: 'flex-end', height: 'calc(8 * var(--mu))' }}>
+                    {[1, 2, 3, 4, 5].map(i => (
+                      <div key={i} style={{ width: 'calc(1 * var(--mu))', height: `calc(${i * 1.5} * var(--mu))`, background: i <= project.complexity ? '#55ff55' : '#555' }} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {/* Scanning text */}
+              <div style={{ color: '#aaa', fontSize: 'calc(4 * var(--font-mu))', fontFamily: "'Minecraft', sans-serif", textShadow: 'calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #3f3f3f', marginTop: 'calc(4 * var(--mu))' }}>
+                {portfolioMode === 'recruiter' ? 'Showing all projects' : 'Scanning for games on your local network'}
+              </div>
+            </div>
+
+            {/* Footer Buttons — matching screenshot 2 */}
+            {/* Footer Buttons — matching screenshot 2 */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'calc(4 * var(--mu))', marginTop: 'calc(3 * var(--mu))', paddingBottom: 'calc(4 * var(--mu))' }}>
+              {/* Row 1: Join Server | Direct Connection | Add Server */}
+              <div style={{ display: 'flex', gap: 'calc(4 * var(--mu))', width: 'calc(304 * var(--mu))' }}>
+                <button className={`mc-btn ${selectedProject ? '' : 'disabled'}`} style={{ width: '33.33%' }} onClick={() => {
+                  if (selectedProject) window.open(selectedProject.live, '_blank');
+                }}>
+                  <span className="mc-btn-inner">{portfolioMode === 'recruiter' ? 'Live Demo' : 'Join Server'}</span>
+                </button>
+                <button className={`mc-btn ${selectedProject ? '' : 'disabled'}`} style={{ width: '33.33%' }} onClick={() => {
+                  if (selectedProject) window.open(selectedProject.github, '_blank');
+                }}>
+                  <span className="mc-btn-inner">{portfolioMode === 'recruiter' ? 'GitHub' : 'Direct Connection'}</span>
+                </button>
+                <button className="mc-btn" style={{ width: '33.33%' }} onClick={() => navigateTo('contact')}>
+                  <span className="mc-btn-inner">{portfolioMode === 'recruiter' ? 'Contact Me' : 'Add Server'}</span>
+                </button>
+              </div>
+              {/* Row 2: Edit | Delete | Refresh | Back */}
+              <div style={{ display: 'flex', gap: 'calc(4 * var(--mu))', width: 'calc(304 * var(--mu))' }}>
+                <button className="mc-btn" style={{ width: '25%' }} onClick={() => navigateTo('skills')}>
+                  <span className="mc-btn-inner">{portfolioMode === 'recruiter' ? 'Skills' : 'Edit'}</span>
+                </button>
+                <button className="mc-btn" style={{ width: '25%' }} onClick={() => navigateTo('profile')}>
+                  <span className="mc-btn-inner">{portfolioMode === 'recruiter' ? 'About' : 'Delete'}</span>
+                </button>
+                <button className="mc-btn" style={{ width: '25%' }} onClick={() => { setSelectedProject(null); }}>
+                  <span className="mc-btn-inner">Refresh</span>
+                </button>
+                <button className="mc-btn" style={{ width: '25%' }} onClick={() => navigateTo('menu')}>
+                  <span className="mc-btn-inner">Back</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {/* REALMS / SKILLS SCREEN */}
         {activeSection === 'skills' && (
-          <div className="gui-screen">
-            <div className="gui-title">Minecraft Realms</div>
-            <div className="gui-panel">
-              <div className="bio-text">
-                <div className="bio-section">
-                  <div className="bio-heading">Active Realms - Skills & Tech Stack</div>
-                  <p style={{ marginBottom: 'calc(4 * var(--mu))' }}>Here is a listing of the core technologies I build on daily:</p>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'calc(2 * var(--mu))', color: '#ffcd9b' }}>
-                    <div>• React / Next.js</div>
-                    <div>• Three.js / WebGL / CSS 3D</div>
-                    <div>• JavaScript (ES6+) / Node.js</div>
-                    <div>• HTML5 / CSS3 / Vanilla CSS</div>
-                    <div>• Vite / Webpack / Tooling</div>
-                    <div>• Git / GitHub / Version Control</div>
-                  </div>
-                </div>
-              </div>
+          <div className="gui-screen" style={{ justifyContent: 'flex-start', padding: 0 }}>
+            {/* Title */}
+            <div className="gui-title" style={{ marginTop: 'calc(4 * var(--mu))', marginBottom: 'calc(3 * var(--mu))' }}>
+              {portfolioMode === 'recruiter' ? 'Skills' : 'Advancements'}
             </div>
-            <div className="gui-row">
-              <button className="mc-btn" onClick={() => setActiveSection('menu')}>
-                <span className="mc-btn-inner">Cancel</span>
-              </button>
+
+            {/* Skills list — dark scrollable strip */}
+            <div className="mc-list-container">
+              {skillsData.skills.map(skill => {
+                const statusIcon = skill.status === 'unlocked' ? '⭐' : skill.status === 'in-progress' ? '⚙️' : '🔒';
+                return (
+                  <div 
+                    key={skill.id}
+                    className="mc-list-item"
+                  >
+                    <div style={{ width: 'calc(12 * var(--mu))', height: 'calc(12 * var(--mu))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'calc(6 * var(--font-mu))', marginRight: 'calc(4 * var(--mu))', flexShrink: 0 }}>
+                      {statusIcon}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'calc(0.5 * var(--mu))', flexGrow: 1 }}>
+                      <div style={{ color: '#fff', fontSize: 'calc(5 * var(--font-mu))', textShadow: 'calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #3f3f3f' }}>{skill.name}</div>
+                      <div style={{ color: '#aaa', fontSize: 'calc(4 * var(--font-mu))', textShadow: 'calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #3f3f3f' }}>
+                        {portfolioMode === 'recruiter' ? `${skill.category}` : `${skill.status === 'unlocked' ? 'Advancement Made!' : skill.status === 'in-progress' ? 'Task in Progress...' : 'Advancement Locked'}${skill.startDate ? ` (${skill.startDate})` : ''}`}
+                      </div>
+                      <div style={{ color: '#888', fontSize: 'calc(3.5 * var(--font-mu))', textShadow: 'calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #3f3f3f' }}>{skill.description}</div>
+                    </div>
+                    {/* Website Link Button */}
+                    {skill.url && (
+                      <div style={{ marginLeft: 'calc(4 * var(--mu))', flexShrink: 0 }}>
+                        <a href={skill.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                          <button className="mc-btn" style={{ width: 'calc(40 * var(--mu))', height: 'calc(12 * var(--mu))', fontSize: 'calc(4 * var(--font-mu))' }}>
+                            <span className="mc-btn-inner">View Site</span>
+                          </button>
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer button — Done */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'calc(4 * var(--mu))', marginTop: 'calc(3 * var(--mu))', paddingBottom: 'calc(4 * var(--mu))' }}>
+              <div style={{ display: 'flex', gap: 'calc(4 * var(--mu))', width: 'calc(304 * var(--mu))' }}>
+                <button className="mc-btn" style={{ width: '100%' }} onClick={() => navigateTo('menu')}>
+                  <span className="mc-btn-inner">Done</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {/* OPTIONS / CONTACT SCREEN */}
         {activeSection === 'contact' && (
-          <div className="gui-screen">
-            <div className="gui-title">Options</div>
-            
-            <div className="options-grid">
-              
-              <a href="https://github.com/RaghavNotFound" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-                <button className="mc-btn">
-                  <span className="mc-btn-inner">GitHub: RaghavNotFound</span>
-                </button>
-              </a>
-
-              <a href="mailto:raghavsinghal638@gmail.com" style={{ textDecoration: 'none' }}>
-                <button className="mc-btn">
-                  <span className="mc-btn-inner">Email: raghavsinghal638</span>
-                </button>
-              </a>
-
-              <button className="mc-btn">
-                <span className="mc-btn-inner">Skin: RaghavNotFound</span>
-              </button>
-
-              <button className="mc-btn" onClick={() => alert("Resume download placeholder!")}>
-                <span className="mc-btn-inner">Resume: Download</span>
-              </button>
-
-            </div>
-
-            <div className="gui-row" style={{ width: 'calc(60 * var(--mu))' }}>
-              <button className="mc-btn" onClick={() => setActiveSection('menu')}>
-                <span className="mc-btn-inner">Done</span>
-              </button>
-            </div>
-          </div>
+          <ContactScreen 
+            navigateTo={navigateTo}
+            musicVolume={musicVolume}
+            setMusicVolume={setMusicVolume}
+            buttonVolume={buttonVolume}
+            setButtonVolume={setButtonVolume}
+            textScale={textScale}
+            setTextScale={setTextScale}
+            skyboxSpeed={skyboxSpeed}
+            setSkyboxSpeed={setSkyboxSpeed}
+            reducedMotion={reducedMotion}
+            setReducedMotion={setReducedMotion}
+            portfolioMode={portfolioMode}
+            setPortfolioMode={setPortfolioMode}
+          />
         )}
 
         {/* FOOTER */}
         <div className="footer-left">Minecraft 1.21.8</div>
         <div className="footer-right">Copyright Mojang AB. Portfolio RaghavNotFound!</div>
 
+      </div>
+
+      {/* F3 OVERLAY */}
+      {f3Open && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          pointerEvents: 'none',
+          zIndex: 2000,
+          fontFamily: "'Minecraft', sans-serif",
+          fontSize: 'calc(4 * var(--font-mu))',
+          color: '#ffffff',
+          textShadow: 'calc(1 * var(--mu)) calc(1 * var(--mu)) 0 #3f3f3f',
+          display: 'flex',
+          justifyContent: 'space-between',
+          lineHeight: '1.1'
+        }}>
+          {/* Left Column */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>Minecraft 1.21.8 (Portfolio/RaghavNotFound)</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>{systemSpecs.browser} on {systemSpecs.os}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>&nbsp;</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>Cores: {systemSpecs.cores}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>Screen: {systemSpecs.screenRes}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>Viewport: {systemSpecs.viewportRes}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>Aspect: {systemSpecs.aspectRatio}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>Platform: {systemSpecs.platform}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>Timezone: {systemSpecs.timezone}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>&nbsp;</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>XYZ: {systemSpecs.coords}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>IP: {systemSpecs.ip}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>Location: {systemSpecs.location}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>ISP: {systemSpecs.isp}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>Online: {systemSpecs.online}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>Battery: {systemSpecs.battery}</div>
+          </div>
+          {/* Right Column */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>Memory: {systemSpecs.memory} / JS Heap: {systemSpecs.jsHeapSize}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>DOM Nodes: {systemSpecs.domNodes}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>Renderer: {systemSpecs.gpuRenderer}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>GPU Vendor: {systemSpecs.gpuVendor}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>GL Version: {systemSpecs.glVersion}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>GLSL: {systemSpecs.glslVersion}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>Max Texture: {systemSpecs.maxTextureSize}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>&nbsp;</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>Language: {systemSpecs.language}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>Cookies: {systemSpecs.cookies}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>Session Time: {systemSpecs.sessionTime}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>Visit Count: {systemSpecs.visitCount}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>DNT: {systemSpecs.dnt}</div>
+            <div style={{ background: 'rgba(80,80,80,0.5)', padding: '0 calc(1 * var(--mu))' }}>Color Scheme: {systemSpecs.colorScheme}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Music Toast Notification */}
+      <div 
+        className={`music-toast ${showSongNotification ? 'active' : ''}`}
+        style={{
+          width: MUSIC_TOAST_WIDTH,
+          height: MUSIC_TOAST_HEIGHT,
+          borderWidth: MUSIC_TOAST_BORDER_WIDTH,
+          borderRadius: MUSIC_TOAST_BORDER_RADIUS,
+          top: MUSIC_TOAST_Y,
+          left: MUSIC_TOAST_X,
+          '--icon-size': MUSIC_TOAST_ICON_SIZE,
+          '--icon-margin': MUSIC_TOAST_ICON_MARGIN,
+          '--icon-bounce-speed': MUSIC_TOAST_BOUNCE_SPEED,
+          '--icon-bounce-delay': MUSIC_TOAST_BOUNCE_DELAY
+        }}
+      >
+        <div className="music-toast-icon">
+          <div className="custom-note note-1"></div>
+          <div className="custom-note note-2"></div>
+          <div className="custom-note note-3"></div>
+        </div>
+        <div className="music-toast-text">{currentSongName}</div>
       </div>
     </div>
   );

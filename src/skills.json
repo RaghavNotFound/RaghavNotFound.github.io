@@ -1,0 +1,70 @@
+{
+  "skills": [
+    {
+      "id": "linux",
+      "name": "Linux",
+      "category": "Core OS",
+      "status": "unlocked",
+      "startDate": "2023-06-15",
+      "description": "Linux system administration, shell scripting, process management, security controls.",
+      "proficiency": 4,
+      "parents": [],
+      "url": "https://www.kernel.org/"
+    },
+    {
+      "id": "networking",
+      "name": "Networking",
+      "category": "Foundations",
+      "status": "unlocked",
+      "startDate": "2023-09-01",
+      "description": "TCP/IP, routing protocols, subnetting, DNS, packet capture analysis.",
+      "proficiency": 3,
+      "parents": [],
+      "url": "https://en.wikipedia.org/wiki/Computer_network"
+    },
+    {
+      "id": "react",
+      "name": "React 18",
+      "category": "Web Dev",
+      "status": "unlocked",
+      "startDate": "2024-01-10",
+      "description": "Component design, hooks, state synchronization, render cycle optimization.",
+      "proficiency": 5,
+      "parents": [],
+      "url": "https://react.dev/"
+    },
+    {
+      "id": "threejs",
+      "name": "Three.js",
+      "category": "3D Web",
+      "status": "in-progress",
+      "startDate": "2024-04-15",
+      "description": "WebGL matrices, pivot rigging, camera math, custom geometry instantiation.",
+      "proficiency": 3,
+      "parents": ["react"],
+      "url": "https://threejs.org/"
+    },
+    {
+      "id": "python",
+      "name": "Python",
+      "category": "Scripting",
+      "status": "unlocked",
+      "startDate": "2022-10-05",
+      "description": "Automation, parsing, socket programming, multi-threaded scripts.",
+      "proficiency": 4,
+      "parents": [],
+      "url": "https://www.python.org/"
+    },
+    {
+      "id": "cybersecurity",
+      "name": "Cybersecurity",
+      "category": "Security",
+      "status": "in-progress",
+      "startDate": "2024-02-12",
+      "description": "Vulnerability scanning, port audits, penetration testing fundamentals.",
+      "proficiency": 2,
+      "parents": ["linux", "networking"],
+      "url": "https://www.cisa.gov/"
+    }
+  ]
+}

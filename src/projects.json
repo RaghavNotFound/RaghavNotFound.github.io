@@ -1,0 +1,52 @@
+{
+  "projects": [
+    {
+      "id": "portfolio-site",
+      "name": "Voxel Portfolio",
+      "tagline": "Minecraft-themed dev portfolio with dual modes",
+      "stack": ["React", "Three.js", "Vanilla CSS"],
+      "complexity": 5,
+      "stars": 42,
+      "forks": 12,
+      "startDate": "2024-06-01",
+      "icon": "MT",
+      "description": "A high-performance interactive portfolio built using React, Three.js, and custom canvas loaders that dynamically shifts modes based on the viewer.",
+      "role": "Full-stack developer",
+      "challenges": "Balancing Minecraft's voxel design language with responsive CSS layout parameters and rendering performance.",
+      "github": "https://github.com/RaghavNotFound/mysterious-tesla",
+      "live": "https://github.com/RaghavNotFound/mysterious-tesla"
+    },
+    {
+      "id": "chroma-keyer",
+      "name": "PNG Chroma Remover",
+      "tagline": "Raw byte-buffer color extraction utility",
+      "stack": ["Node.js", "Zlib", "Buffers"],
+      "complexity": 4,
+      "stars": 28,
+      "forks": 4,
+      "startDate": "2024-03-12",
+      "icon": "CR",
+      "description": "A lightweight server utility that reads, parses, filters, and re-compresses raw PNG image byte buffers to replace chroma colors with alpha transparency.",
+      "role": "Backend Engineer",
+      "challenges": "Reconstructing the Paeth and Sub PNG filters manually without external dependencies.",
+      "github": "https://github.com/RaghavNotFound",
+      "live": "https://github.com/RaghavNotFound"
+    },
+    {
+      "id": "network-scanner",
+      "name": "LAN Audit Tool",
+      "tagline": "Multi-threaded socket port scanner",
+      "stack": ["Python", "Sockets", "Threading"],
+      "complexity": 3,
+      "stars": 15,
+      "forks": 2,
+      "startDate": "2023-11-05",
+      "icon": "LA",
+      "description": "A rapid host discovery and open-port scanner utilizing concurrent execution structures to profile active local networks.",
+      "role": "Security Tooling Developer",
+      "challenges": "Handling socket timeouts gracefully under high concurrency to avoid false-negative results.",
+      "github": "https://github.com/RaghavNotFound",
+      "live": "https://github.com/RaghavNotFound"
+    }
+  ]
+}

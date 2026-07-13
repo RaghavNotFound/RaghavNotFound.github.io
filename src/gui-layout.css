@@ -7,13 +7,17 @@
    ═══════════════════════════════════════════════════════ */
 
 :root {
+  /* Text accessibility scaling */
+  --text-scale: 1.0;
+  --font-mu: calc(1px * var(--gui-scale) * var(--text-scale, 1));
+
   /* ═══════════════════════════════════════════════════════
      MINECRAFT TITLE LOGO POSITIONING
      ═══════════════════════════════════════════════════════ */
   /* Width of the main "MINECRAFT" title logo container */
   --title-logo-width: calc(192 * var(--mu));
-  /* Vertical margin from top of screen */
-  --title-logo-margin-top: calc(23vh - 39.5 * var(--mu));
+  /* Vertical margin from top of screen - clamped to prevent flying off screen on short displays */
+  --title-logo-margin-top: max(calc(12 * var(--mu)), calc(23vh - 39.5 * var(--mu)));
   /* Vertical margin below logo before buttons */
   --title-logo-margin-bottom: calc(24 * var(--mu));
 
@@ -132,13 +136,17 @@
      FOOTER VERSION & COPYRIGHT TEXTS
      ═══════════════════════════════════════════════════════ */
   /* Font size of footer version and copyright labels */
-  --footer-font-size: calc(6.8 * var(--mu));
+  --footer-font-size: calc(7.3 * var(--mu));
   /* Padding from bottom of screen */
-  --footer-padding-bottom: calc(0.4 * var(--mu));
+  --footer-padding-bottom: calc(0.2 * var(--mu));
   /* Padding from left screen edge */
   --footer-padding-left: calc(2 * var(--mu));
   /* Padding from right screen edge */
   --footer-padding-right: calc(2 * var(--mu));
+  /* Text shadow displacement distance for footer text */
+  --footer-text-shadow-dist: calc(0.8 * var(--mu));
+  /* Text shadow color for footer text */
+  --footer-text-shadow-color: #3f3f3f;
 
   /* ═══════════════════════════════════════════════════════
      3D STEVE VIEWPORT POSITIONING
