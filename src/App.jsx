@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import GlobalControls from './GlobalControls';
 import ContactScreen from './ContactScreen';
 import MainMenu from './MainMenu';
+import MojangLoader from './MojangLoader';
 import projectsData from './projects.json';
 import skillsData from './skills.json';
 import { 
@@ -63,6 +64,50 @@ export default function App() {
   const [skyboxSpeed, setSkyboxSpeed] = useState(50); // Default to 50% speed
   const [currentSongName, setCurrentSongName] = useState('');
   const [showSongNotification, setShowSongNotification] = useState(false);
+
+  // Authentic Minecraft Mojang Red Page Loader states
+  const [loaderProgress, setLoaderProgress] = useState(15);
+  const [loaderFading, setLoaderFading] = useState(false);
+  const [loaderComplete, setLoaderComplete] = useState(false);
+
+  // Progressive loading simulation synced with page and asset readiness
+  useEffect(() => {
+    let currentPct = 15;
+    const interval = setInterval(() => {
+      currentPct += Math.random() * 12 + 6;
+      if (currentPct >= 88) {
+        currentPct = 88;
+        clearInterval(interval);
+      }
+      setLoaderProgress(prev => Math.max(prev, Math.min(88, currentPct)));
+    }, 110);
+
+    const finishLoading = () => {
+      clearInterval(interval);
+      setLoaderProgress(100);
+      setTimeout(() => {
+        setLoaderFading(true);
+        setTimeout(() => {
+          setLoaderComplete(true);
+        }, 650);
+      }, 300);
+    };
+
+    // Ensure authentic Mojang splash screen display duration (~1.2s minimum)
+    const minTimer = setTimeout(() => {
+      if (document.readyState === 'complete') {
+        finishLoading();
+      } else {
+        window.addEventListener('load', finishLoading, { once: true });
+      }
+    }, 1200);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(minTimer);
+      window.removeEventListener('load', finishLoading);
+    };
+  }, []);
 
   // Global states for Mode, Reduced Motion, and F3 Overlay (persisted in localStorage)
   const [portfolioMode, setPortfolioMode] = useState(() => {
@@ -1397,6 +1442,15 @@ export default function App() {
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+      
+      {/* Authentic Minecraft Mojang Red Page Loader */}
+      {!loaderComplete && (
+        <MojangLoader 
+          progress={loaderProgress}
+          isFading={loaderFading}
+          isComplete={loaderComplete}
+        />
+      )}
       
       {/* Dynamic Fullscreen Skybox canvas */}
       <div id="skyboxCanvasContainer" ref={skyboxCanvasRef} style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 0 }}></div>

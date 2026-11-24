@@ -1,0 +1,63 @@
+/* Minecraft Mojang Studios Red Loading Screen */
+.mojang-loader-screen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #EF323D;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 999999;
+  opacity: 1;
+  transition: opacity 0.65s cubic-bezier(0.2, 0, 0.2, 1);
+  pointer-events: auto;
+  user-select: none;
+  overflow: hidden;
+}
+
+.mojang-loader-screen.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.reduced-motion-active .mojang-loader-screen.fade-out {
+  transition: opacity 0.1s linear;
+}
+
+.mojang-loader-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 520px;
+  padding: 0 24px;
+  box-sizing: border-box;
+}
+
+.mojang-logo {
+  width: clamp(240px, 48vw, 380px);
+  height: auto;
+  fill: #FFFFFF;
+  display: block;
+}
+
+.mojang-progress-track {
+  margin-top: clamp(40px, 8vh, 72px);
+  width: clamp(240px, 45vw, 360px);
+  height: 10px;
+  background-color: #EF323D;
+  border: 1px solid #FFFFFF;
+  padding: 1px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+}
+
+.mojang-progress-bar {
+  height: 100%;
+  background-color: #FFFFFF;
+  transition: width 0.15s linear;
+  box-sizing: border-box;
+}
